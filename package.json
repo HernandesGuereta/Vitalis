@@ -1,0 +1,31 @@
+{
+  "name": "vitalis",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepositório da plataforma Vitalis de doação de sangue.",
+  "workspaces": ["apps/*"],
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "npm": ">=11 <12"
+  },
+  "packageManager": "npm@11.16.0",
+  "scripts": {
+    "dev:mobile": "npm run dev --workspace @vitalis/mobile",
+    "dev:desktop": "npm run dev --workspace @vitalis/desktop",
+    "dev:api": "npm run dev --workspace @vitalis/api",
+    "start:api": "npm run start --workspace @vitalis/api",
+    "start:desktop": "npm run start --workspace @vitalis/desktop",
+    "typecheck": "npm run typecheck --workspaces",
+    "build": "npm run build --workspace @vitalis/api && npm run build --workspace @vitalis/desktop",
+    "check:mobile": "npm run check --workspace @vitalis/mobile",
+    "export:mobile": "npm run export --workspace @vitalis/mobile",
+    "validate": "npm run typecheck && npm run build && npm run check:mobile && npm run export:mobile",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:check": "docker compose exec postgres sh -c 'pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"'"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  }
+}
