@@ -6,7 +6,8 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2023"],
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
-  "include": ["electron.vite.config.ts", "src/main/**/*.ts"]
+  "include": ["electron.vite.config.ts", "src/main/**/*.ts", "tests/**/*.ts"]
 }

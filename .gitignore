@@ -6,6 +6,7 @@ node_modules/
 
 # Saídas de compilação
 dist/
+dist-web/
 out/
 build/
 coverage/

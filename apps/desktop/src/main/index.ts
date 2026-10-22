@@ -3,9 +3,12 @@ import { join } from 'node:path';
 
 function createWindow() {
   const window = new BrowserWindow({
-    width: 1100,
-    height: 750,
-    title: 'Vitalis',
+    width: 1400,
+    height: 940,
+    minWidth: 980,
+    minHeight: 680,
+    title: 'Vitalis · Administração',
+    backgroundColor: '#f8f7f6',
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

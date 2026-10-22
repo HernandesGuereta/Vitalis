@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Monorepositório da plataforma Vitalis de doação de sangue.",
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "engines": {
     "node": ">=24.18.0 <25",
     "npm": ">=11 <12"
@@ -11,16 +13,27 @@
   "packageManager": "npm@11.16.0",
   "scripts": {
     "dev:mobile": "npm run dev --workspace @vitalis/mobile",
+    "dev:mobile:web": "npm run web --workspace @vitalis/mobile",
+    "dev:api:lan": "npm run dev:lan --workspace @vitalis/api",
     "dev:desktop": "npm run dev --workspace @vitalis/desktop",
     "dev:api": "npm run dev --workspace @vitalis/api",
     "start:api": "npm run start --workspace @vitalis/api",
     "start:desktop": "npm run start --workspace @vitalis/desktop",
     "typecheck": "npm run typecheck --workspaces",
+    "test:desktop": "npm run test --workspace @vitalis/desktop",
+    "test:mobile": "npm run test --workspace @vitalis/mobile",
+    "test:mobile:ui": "node apps/mobile/tests/run-ui.cjs",
+    "test:api": "npm run test --workspace @vitalis/api",
     "build": "npm run build --workspace @vitalis/api && npm run build --workspace @vitalis/desktop",
     "check:mobile": "npm run check --workspace @vitalis/mobile",
     "export:mobile": "npm run export --workspace @vitalis/mobile",
-    "validate": "npm run typecheck && npm run build && npm run check:mobile && npm run export:mobile",
+    "validate": "npm run typecheck && npm run test:desktop && npm run test:mobile && npm run test:api && npm run build && npm run check:mobile && npm run export:mobile",
     "db:up": "docker compose up -d --wait postgres",
+    "db:migrate": "npm run db:migrate --workspace @vitalis/api",
+    "db:role": "npm run db:role --workspace @vitalis/api",
+    "db:seed": "npm run db:seed --workspace @vitalis/api",
+    "db:cleanup": "npm run db:cleanup --workspace @vitalis/api",
+    "test:db": "npm run test:db --workspace @vitalis/api",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:check": "docker compose exec postgres sh -c 'pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"'"

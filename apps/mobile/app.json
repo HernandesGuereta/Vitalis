@@ -4,6 +4,11 @@
     "slug": "vitalis",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light"
+    "userInterfaceStyle": "light",
+    "web": {
+      "lang": "pt-BR",
+      "themeColor": "#bb2043",
+      "description": "Protótipo do aplicativo do doador Vitalis"
+    }
   }
 }

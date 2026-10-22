@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.json",
+    "test": "node --test tests/model.test.ts tests/office.test.ts",
+    "test:ui": "node tests/run-ui.cjs",
     "build": "electron-vite build",
     "start": "electron-vite preview"
   },
