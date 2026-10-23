@@ -48,7 +48,7 @@ export function DonorsView({
       </div>
       <Panel title="Doadores da unidade" aside={`${data.donors.length} cadastrados`}>
         {filtered.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
             <table>
               <thead>
                 <tr>
@@ -168,7 +168,7 @@ export function ProfileView({
       </div>
       <Panel title="Histórico do doador" className="section-gap">
         {history.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
             <table>
               <thead>
                 <tr>
@@ -346,7 +346,7 @@ export function DonationsView({ data }: { data: OfficeData }) {
       </div>
       <Panel title="Últimas doações" aside="Registros da unidade">
         {list.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
             <table>
               <thead>
                 <tr>
@@ -533,7 +533,7 @@ export function AgendaView({
         }
       >
         {rows.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
             <table>
               <thead>
                 <tr>

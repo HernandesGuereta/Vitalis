@@ -265,7 +265,7 @@ export function MainScreen({ screen }: { screen: Screen }) {
         </Card>
         <Card>
           <Text style={s.cardTitle}>Próximos horários</Text>
-          <Body>A partir de amanhã · das 9h às 10h</Body>
+          <Body>Consulte os dias e horários disponíveis em Agendar doação.</Body>
           <Text style={s.cardTitle}>Como funciona</Text>
           <Body muted>
             Escolha um horário e confirme sua visita. A solicitação é recebida pela unidade fictícia

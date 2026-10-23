@@ -49,6 +49,7 @@ function freshData(): MobileData {
 function MobileApp() {
   const shared = useSharedAgenda();
   const { width, fontScale } = useWindowDimensions();
+  const compactHeader = Math.min(width, 600) < 320 || fontScale > 1.3;
   const wrapTabs = Math.min(width, 600) < 360 || fontScale > 1.3;
   const [localData, setData] = useState<MobileData>(freshData);
   const data = {
@@ -199,13 +200,14 @@ function MobileApp() {
                 paddingHorizontal: 20,
                 paddingVertical: 12,
                 flexDirection: 'row',
+                flexWrap: 'wrap',
                 gap: 12,
                 alignItems: 'center',
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
               }}
             >
-              <View style={{ flex: 1, gap: 3 }}>
+              <View style={{ flex: compactHeader ? undefined : 1, flexBasis: compactHeader ? '100%' : undefined, gap: 3 }}>
                 <Logo />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Icon name="pin" size={18} />

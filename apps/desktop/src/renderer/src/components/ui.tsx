@@ -44,7 +44,7 @@ export function Stat({
 }
 export function Notice({ children, warning = false }: { children: ReactNode; warning?: boolean }) {
   return (
-    <div className={`notice ${warning ? 'warning' : ''}`}>
+    <div role="status" className={`notice ${warning ? 'warning' : ''}`}>
       <Icon name="info" size={18} />
       <span>{children}</span>
     </div>

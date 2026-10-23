@@ -13,6 +13,7 @@ export function SharedAgendaView() {
   const [session, setSession] = useState(getAgendaSession);
   const [rows, setRows] = useState<SharedAppointment[]>([]);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState('');
@@ -25,6 +26,7 @@ export function SharedAgendaView() {
     if (!Array.isArray(result.appointments)) throw new Error('Resposta inválida da agenda.');
     if (current === updates.current) {
       setRows(result.appointments);
+      setLoaded(true);
       setError('');
     }
   }
@@ -56,6 +58,7 @@ export function SharedAgendaView() {
         const result = await apiRequest<{ appointments: SharedAppointment[] }>('/v1/appointments');
         if (mounted && current === updates.current && Array.isArray(result.appointments)) {
           setRows(result.appointments);
+          setLoaded(true);
           setError('');
         }
       } catch (e) {
@@ -119,11 +122,12 @@ export function SharedAgendaView() {
               disabled={busy}
               onClick={() => void action(refresh)}
             >
-              Atualizar agendamentos
+              {busy ? 'Atualizando…' : 'Atualizar agendamentos'}
             </button>
           </div>
+          {!loaded && !error && <Notice>Carregando agendamentos…</Notice>}
           {rows.filter((row) => !date || row.date === date).length ? (
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
               <table>
                 <thead>
                   <tr>
@@ -186,12 +190,12 @@ export function SharedAgendaView() {
                                 >
                                   Confirmar cancelamento
                                 </button>{' '}
-                                <button className="table-action" onClick={() => setPending('')}>
+                                <button disabled={busy} className="table-action" onClick={() => setPending('')}>
                                   Manter
                                 </button>
                               </>
                             ) : (
-                              <button className="table-action" onClick={() => setPending(row.id)}>
+                              <button disabled={busy} className="table-action" onClick={() => setPending(row.id)}>
                                 Cancelar reserva
                               </button>
                             ))}
@@ -201,9 +205,9 @@ export function SharedAgendaView() {
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : loaded && !error ? (
             <Empty>Nenhuma reserva compartilhada para esse filtro.</Empty>
-          )}
+          ) : null}
         </>
       )}
     </Panel>
@@ -213,6 +217,7 @@ export function SharedAgendaView() {
 export function AppointmentSummary({ onOpen }: { onOpen: () => void }) {
   const [rows, setRows] = useState<SharedAppointment[]>([]);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let mounted = true;
     const update = async () => {
@@ -225,6 +230,7 @@ export function AppointmentSummary({ onOpen }: { onOpen: () => void }) {
               .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)),
           );
           setError('');
+          setLoaded(true);
         }
       } catch {
         if (mounted) setError('Não foi possível atualizar os agendamentos.');
@@ -240,15 +246,16 @@ export function AppointmentSummary({ onOpen }: { onOpen: () => void }) {
     };
   }, []);
   return (
-    <Panel title="Solicitações de doação" aside={`${rows.length} agendamento(s)`}>
+    <Panel className="appointment-summary" title="Solicitações de doação" aside={loaded ? `${rows.length} agendamento(s)` : 'Consulta à API'}>
       <FormError message={error} />
+      {!loaded && !error && <Notice>Carregando solicitações…</Notice>}
       {rows.length ? (
         <p>
           {rows[0]!.donorName} · {formatDate(rows[0]!.date)} · {rows[0]!.time}
         </p>
-      ) : (
+      ) : loaded && !error ? (
         <p>Nenhuma solicitação ativa no momento.</p>
-      )}
+      ) : null}
       <button className="button primary" onClick={onOpen}>
         Ver agendamentos recebidos
       </button>

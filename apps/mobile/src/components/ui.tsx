@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TextInputProps } from 'react-native';
@@ -99,7 +99,7 @@ export function Link({ title, onPress }: { title: string; onPress: () => void })
 }
 export function Notice({ children, warning = false }: { children: ReactNode; warning?: boolean }) {
   return (
-    <View style={[s.notice, warning && { backgroundColor: '#fff4df' }]}>
+    <View accessibilityLiveRegion="polite" style={[s.notice, warning && { backgroundColor: '#fff4df' }]}>
       <Icon name="info" color={warning ? colors.amber : colors.accent} />
       <Text style={[s.noticeText, warning && { color: colors.amber }]}>{children}</Text>
     </View>
@@ -119,6 +119,7 @@ export function ErrorText({ message, testID }: { message: string; testID?: strin
 }
 export function Field({ label, ...props }: TextInputProps & { label: string }) {
   const id = useId();
+  const [focused, setFocused] = useState(false);
   return (
     <View style={s.field}>
       <Text nativeID={id} style={s.fieldLabel}>
@@ -129,8 +130,11 @@ export function Field({ label, ...props }: TextInputProps & { label: string }) {
         accessibilityLabelledBy={id}
         placeholderTextColor={colors.muted}
         {...props}
+        onFocus={(event) => { setFocused(true); props.onFocus?.(event); }}
+        onBlur={(event) => { setFocused(false); props.onBlur?.(event); }}
         style={[
           s.input,
+          focused && { borderColor: colors.accent, borderWidth: 2, paddingHorizontal: 15 },
           props.multiline && { minHeight: 110, textAlignVertical: 'top' },
           props.style,
         ]}
@@ -189,7 +193,7 @@ export function RowAction({
     >
       <Icon name={icon} color={colors.accent} />
       <View style={{ flex: 1, gap: 5 }}>
-        <Text style={s.cardTitle}>{title}</Text>
+        <Text style={[s.cardTitle, { flexShrink: 1 }]}>{title}</Text>
         <Body muted>{detail}</Body>
       </View>
       <Icon name="chevron" />
@@ -256,7 +260,7 @@ export const s = StyleSheet.create({
   fieldLabel: { fontSize: 16, lineHeight: 24, color: colors.ink, fontWeight: '500' },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#94858e',
     borderRadius: 14,
     backgroundColor: '#fff',
     minHeight: 54,

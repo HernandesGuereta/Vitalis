@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSharedAgenda } from '../SharedAgenda';
 import { ApiError, sharedRequest } from '../data/sharedApi';
 import { Switch, Text, View } from 'react-native';
@@ -48,7 +48,7 @@ function BloodPicker({
   );
 }
 export function AuthScreen({ screen }: { screen: Screen }) {
-  const { data, setData, go, root } = useApp();
+  const { data, setData, go, root, scrollToTop } = useApp();
   const shared = useSharedAgenda();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -60,6 +60,9 @@ export function AuthScreen({ screen }: { screen: Screen }) {
   const [connection, setConnection] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => {
+    if (error) scrollToTop();
+  }, [error, scrollToTop]);
   async function submit() {
     if (busy) return;
     if (screen === 'signup' && password !== repeat) {
@@ -97,6 +100,8 @@ export function AuthScreen({ screen }: { screen: Screen }) {
   return (
     <>
       <Logo />
+      {shared.sessionMessage && <Notice warning>{shared.sessionMessage}</Notice>}
+      <ErrorText message={error} />
       <View style={{ height: 16 }} />
       <Title
         subtitle={
@@ -154,7 +159,6 @@ export function AuthScreen({ screen }: { screen: Screen }) {
           />
         </>
       )}
-      <ErrorText message={error} />
       <Button
         title={screen === 'signup' ? 'Criar minha conta' : 'Entrar'}
         busy={busy}
@@ -164,7 +168,7 @@ export function AuthScreen({ screen }: { screen: Screen }) {
         <Link title="Já tenho uma conta" onPress={() => go('login')} />
       ) : (
         <>
-          <Link title="Esqueci minha senha" onPress={() => go('recover')} />
+          <Link title="Recuperar acesso · indisponível no protótipo" onPress={() => go('recover')} />
           <View style={[s.divider, { gap: 12 }]}>
             <Body muted>Ainda não tem uma conta?</Body>
             <Button secondary title="Criar minha conta" onPress={() => go('signup')} />
@@ -254,7 +258,8 @@ export function AccountScreen({ screen }: { screen: Screen }) {
                 setData((d) => ({ ...d, profile: valid }));
                 go('saved');
               } catch (e) {
-                if (e instanceof ApiError && e.status === 401) shared.signOut();
+                if (e instanceof ApiError && e.status === 401)
+                  shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
                 setError(e instanceof Error ? e.message : 'Revise os dados.');
               } finally {
                 setBusy(false);
