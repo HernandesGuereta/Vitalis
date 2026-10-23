@@ -5,9 +5,9 @@
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   --accent: #be2442;
-  --red: #e0002b;
+  --red: #be2442;
   --pink: #fcecef;
-  --muted: #786d75;
+  --muted: #6e626b;
   --border: #e9e0e4;
   --background: #f8f7f6;
 }
@@ -16,7 +16,7 @@
 }
 body {
   margin: 0;
-  min-width: 900px;
+  min-width: 320px;
 }
 button,
 input,
@@ -1160,3 +1160,45 @@ hr {
     grid-template-columns: 1fr;
   }
 }
+
+/* Comfortable controls and readable tables at every supported window size. */
+.icon-button { min-width: 44px; min-height: 44px; }
+.table-action { min-height: 44px; padding: 10px 12px; font-size: 14px; }
+th { font-size: 12px; }
+td { font-size: 14px; }
+button:disabled { cursor: not-allowed; opacity: .6; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.page-heading h1:focus { outline: none; }
+.notice, .form-error, .panel, .stat-card { overflow-wrap: anywhere; }
+.sidebar { overflow-y: auto; }
+@media (max-width: 1000px) {
+  .nav-item, .topbar p { font-size: 14px; }
+  .workspace-label, .stat-card > span, .stat-card p { font-size: 12px; }
+}
+@media (max-width: 760px) {
+  .app-shell { display: block; }
+  .sidebar { position: static; width: 100%; padding: 16px; gap: 12px; }
+  .brand { margin-left: 0; }
+  .workspace-label, .sidebar-profile { display: none; }
+  .sidebar nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sidebar-bottom { margin-top: 0; }
+  .workspace { width: 100%; margin-left: 0; }
+  .topbar, .topbar-right, .page-heading, .panel-heading, .form-actions { flex-wrap: wrap; }
+  .topbar { padding: 16px; }
+  .main-content { padding: 20px 16px; }
+  .stats-grid, .stats-grid.three, .stats-grid.three-stats, .form-row, .movement-filters,
+  .donor-filters, .donation-filters { grid-template-columns: 1fr; }
+  .button, .data-form > .button { min-width: 0; max-width: 100%; white-space: normal; }
+  .login-layout { grid-template-columns: 1fr; }
+  .login-brand-panel { min-height: auto; padding: 24px; gap: 20px; }
+  .login-logo { position: static; }
+  .login-brand-copy h1 { font-size: 28px; }
+  .login-brand-copy p, .login-brand-panel small { display: none; }
+  .login-form-panel { padding: 28px 20px; justify-content: center; }
+}
+
+input:not([type='checkbox']):not([type='radio']), select, textarea { border-color: #94858e; }
+
+.appointment-summary { display: grid; gap: 16px; margin-bottom: 24px; }
+.appointment-summary .panel-heading { margin-bottom: 0; }
+.appointment-summary > .button { justify-self: start; }

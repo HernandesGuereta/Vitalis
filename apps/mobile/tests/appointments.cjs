@@ -283,6 +283,8 @@ exports.checkAppointments = async function ({
   );
   await m.click('Atualizar horários e agendamentos');
   await m.until('document.body.innerText.includes("Bom te ver de novo.")');
+  assert.ok(await m.evaluate('document.body.innerText.includes("Sua sessão expirou. Entre novamente para continuar.")'));
+  await m.screenshot('17-sessao-expirada');
   await loginDonor();
   await m.click('Agenda');
   await m.until('document.body.innerText.includes("DATA ENCERRADA")');

@@ -33,7 +33,7 @@ export function CampaignsView({
       </div>
       <Panel title="Campanhas e avisos" aside={data.settings.name}>
         {data.campaigns.length ? (
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
             <table>
               <thead>
                 <tr>

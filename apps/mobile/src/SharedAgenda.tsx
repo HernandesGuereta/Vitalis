@@ -22,8 +22,9 @@ type SharedState = {
   session: SharedSession | null;
   appointments: SharedAppointment[];
   refreshError: string;
+  sessionMessage: string;
   authenticate: (url: string, email: string, password: string, name?: string) => Promise<void>;
-  signOut: () => void;
+  signOut: (reason?: string) => void;
   setSession: (session: SharedSession | null) => void;
   refresh: () => Promise<void>;
   setAppointments: (appointments: SharedAppointment[]) => void;
@@ -38,8 +39,10 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SharedSession | null>(null);
   const [appointments, setAppointments] = useState<SharedAppointment[]>([]);
   const [refreshError, setRefreshError] = useState('');
+  const [sessionMessage, setSessionMessage] = useState('');
   const generation = useRef(0);
-  function signOut() {
+  function signOut(reason = '') {
+    setSessionMessage(reason);
     generation.current++;
     setSession(null);
     setAppointments([]);
@@ -68,6 +71,7 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
       throw new Error('Sessão inválida.');
     generation.current++;
     setAppointments([]);
+    setSessionMessage('');
     setSession({ ...result, url });
   }
   async function refresh() {
@@ -86,7 +90,7 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       if (current === generation.current && error instanceof ApiError && error.status === 401)
-        signOut();
+        signOut('Sua sessão expirou. Entre novamente para continuar.');
       else if (current === generation.current)
         setRefreshError(
           'Não foi possível atualizar a agenda. Confira a conexão e tente atualizar novamente.',
@@ -96,7 +100,10 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
   }
   useEffect(() => {
     if (!session) return;
-    const expiry = setTimeout(signOut, Math.max(0, Date.parse(session.expiresAt) - Date.now()));
+    const expiry = setTimeout(
+      () => signOut('Sua sessão expirou. Entre novamente para continuar.'),
+      Math.max(0, Date.parse(session.expiresAt) - Date.now()),
+    );
     void refresh().catch(() => {});
     const timer = setInterval(() => {
       if (AppState.currentState === 'active') void refresh().catch(() => {});
@@ -112,6 +119,7 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
         session,
         appointments,
         refreshError,
+        sessionMessage,
         authenticate,
         signOut,
         refresh,
@@ -136,7 +144,7 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
 
 export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'visits' }) {
   const shared = useSharedAgenda();
-  const { root, unitId, selectUnit, scrollToTop } = useApp();
+  const { root, go, unitId, selectUnit, scrollToTop } = useApp();
   const { session, appointments } = shared;
   const [units, setUnits] = useState<SharedUnit[]>([]);
   const [slots, setSlots] = useState<SharedSlot[]>([]);
@@ -165,7 +173,8 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
     try {
       await work();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) shared.signOut();
+      if (e instanceof ApiError && e.status === 401)
+        shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
       setError(e instanceof Error ? e.message : 'Não foi possível concluir.');
     } finally {
       actionLock.current = false;
@@ -231,7 +240,8 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
     void load()
       .catch((e) => {
         if (!mounted) return;
-        if (e instanceof ApiError && e.status === 401) shared.signOut();
+        if (e instanceof ApiError && e.status === 401)
+          shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
         else setSyncError(e instanceof Error ? e.message : 'Falha ao carregar.');
       })
       .finally(() => {
@@ -247,7 +257,8 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
         return;
       void load().catch((e) => {
         if (!mounted) return;
-        if (e instanceof ApiError && e.status === 401) shared.signOut();
+        if (e instanceof ApiError && e.status === 401)
+          shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
         else
           setSyncError('Não foi possível atualizar as vagas. Tente atualizar antes de confirmar.');
       });
@@ -405,7 +416,7 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
       )}
       {mode === 'visits' && (
         <>
-          <Button title="Agendar doação" onPress={() => root('home')} secondary />
+          <Button title="Agendar doação" onPress={() => go('schedule')} secondary />
           {loaded && !appointments.length && (
             <Notice>
               Você ainda não tem agendamentos. Faça sua solicitação pela página inicial.
@@ -493,7 +504,8 @@ export function PrivacyScreen() {
     try {
       await work();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) shared.signOut();
+      if (e instanceof ApiError && e.status === 401)
+        shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
       setError(e instanceof Error ? e.message : 'Não foi possível concluir.');
     } finally {
       setBusy(false);
@@ -520,9 +532,10 @@ export function PrivacyScreen() {
         }
       />
       {exported && (
-        <Text selectable style={s.body}>
-          {exported}
-        </Text>
+        <Card>
+          <Body muted>Para copiar, selecione o texto abaixo e use a opção Copiar do seu aparelho.</Body>
+          <Text selectable style={s.body}>{exported}</Text>
+        </Card>
       )}
       <Card>
         <Text style={s.cardTitle}>Excluir minha conta</Text>

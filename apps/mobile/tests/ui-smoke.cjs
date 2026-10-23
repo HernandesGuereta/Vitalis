@@ -358,6 +358,23 @@ app.whenReady().then(async () => {
     await delay(120);
     assert.ok(await m.evaluate('document.documentElement.scrollWidth<=innerWidth'));
     await m.screenshot('09-tela-compacta');
+    await m.click('Agenda');
+    await m.click('Agendar doação');
+    await m.until('document.body.innerText.includes("Escolha o hemocentro")');
+    await m.click('Conta');
+    await m.click('Meus dados', '[role="button"] [dir="auto"]');
+    mobile.webContents.setZoomFactor(1.5);
+    await delay(120);
+    assert.ok(await m.evaluate('document.documentElement.scrollWidth<=innerWidth'));
+    assert.ok(await m.evaluate(`(() => {
+      const logo=document.querySelector('img[alt="Vitalis"]')?.getBoundingClientRect();
+      const bell=document.querySelector('[aria-label^="Alertas,"]')?.getBoundingClientRect();
+      return logo && bell && (logo.right<=bell.left || logo.bottom<=bell.top);
+    })()`));
+    await m.screenshot('18-texto-ampliado');
+    mobile.webContents.setZoomFactor(1);
+    await m.click('Conta');
+
     await m.click('Sair da conta');
     await m.until('document.body.innerText.includes("Bom te ver de novo.")');
     assert.equal(await m.evaluate('document.querySelectorAll("[role=tab]").length'), 0);

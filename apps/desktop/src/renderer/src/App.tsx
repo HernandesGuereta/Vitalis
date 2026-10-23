@@ -143,7 +143,7 @@ function currentSection(view: View): View {
   if (view.startsWith('alert-')) return 'alerts';
   return view;
 }
-function Login({ onEnter }: { onEnter: () => void }) {
+function Login({ onEnter, message }: { onEnter: () => void; message: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   return (
@@ -182,6 +182,7 @@ function Login({ onEnter }: { onEnter: () => void }) {
               .finally(() => setBusy(false));
           }}
         >
+          {message && <Notice warning>{message}</Notice>}
           <span className="area-label">ÁREA ADMINISTRATIVA</span>
           <h2>
             Cuidar de vidas
@@ -232,7 +233,7 @@ function MovementTable({
   compact?: boolean;
 }) {
   return rows.length ? (
-    <div className="table-scroll">
+    <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
       <table>
         <caption className="sr-only">Histórico de movimentações de exemplo</caption>
         <thead>
@@ -393,6 +394,7 @@ export default function App() {
   const [data, setData] = useState<PrototypeData>(initialStock.data);
   const [office, setOffice] = useState<OfficeData>(initialOffice.data);
   const [loggedIn, setLoggedIn] = useState(() => Boolean(getAgendaSession()));
+  const [sessionMessage, setSessionMessage] = useState('');
   const [view, setView] = useState<View>('overview');
   const [selectedDonor, setSelectedDonor] = useState<string | undefined>();
   const [movementType, setMovementType] = useState<BloodType>('O+');
@@ -451,6 +453,7 @@ export default function App() {
     navigate('alert-form');
   }
   function enter() {
+    setSessionMessage('');
     setLoggedIn(true);
   }
   function logout() {
@@ -462,12 +465,16 @@ export default function App() {
     if (!loggedIn) return;
     const timer = window.setInterval(() => {
       if (!getAgendaSession()) {
+        setSessionMessage('Sua sessão expirou. Entre novamente para continuar.');
         setLoggedIn(false);
         setView('overview');
       }
     }, 1000);
     return () => window.clearInterval(timer);
   }, [loggedIn]);
+  useEffect(() => {
+    if (loggedIn) document.querySelector<HTMLElement>('.page-heading h1')?.focus();
+  }, [view, loggedIn]);
   const stock = getStock(data);
   const total = stock.reduce((sum, item) => sum + item.quantity, 0);
   const critical = stock.filter((item) => item.status === 'critico');
@@ -546,7 +553,7 @@ export default function App() {
     </select>
   );
 
-  if (!loggedIn) return <Login onEnter={enter} />;
+  if (!loggedIn) return <Login onEnter={enter} message={sessionMessage} />;
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -621,7 +628,7 @@ export default function App() {
         <main className="main-content" id="main-content">
           <div className="page-heading">
             <div>
-              <h1>
+              <h1 tabIndex={-1}>
                 {view === 'movement-done' && lastMovement?.kind === 'saida'
                   ? 'Saída registrada'
                   : title}
@@ -759,7 +766,7 @@ export default function App() {
                   </select>
                 </div>
                 {filteredStock.length ? (
-                  <div className="table-scroll">
+                  <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
                     <table>
                       <thead>
                         <tr>

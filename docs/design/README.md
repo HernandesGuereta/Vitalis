@@ -40,3 +40,7 @@ Os layouts são adaptáveis ao tamanho da janela. Valores de indicadores e tabel
 ## Referência mobile
 
 O PDF **Vitalis • Experiência do Doador-mobile.pdf** fornecido pela equipe contém 23 telas de 390 × 844 pontos: acesso e cadastro (1–6), início e alertas (7–9), unidades (10–11), pré-triagem (12–14), reserva (15–17), doações (18), conta e preferências (19–22) e guia (23). O aplicativo segue a referência visual com adaptações para legibilidade e para o fluxo solicitado: login único, cadastro de doador pré-triagem digital curta pela página inicial e agendamento de doação separado. A mesma logo oficial foi copiada para `apps/mobile/assets/vitalis-logo.png`. Consulte [o guia mobile](../prototipo-mobile.md).
+
+## Revisão de experiência
+
+A [revisão de UX de mobile e desktop](../revisao-experiencia.md) registra problemas por gravidade, melhorias implementadas, verificações e diferenças preservadas em relação às referências exportadas.

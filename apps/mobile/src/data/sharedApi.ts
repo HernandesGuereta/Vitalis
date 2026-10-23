@@ -51,7 +51,13 @@ export async function sharedRequest<T>(
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
     if (response.status === 204) return undefined as T;
-    const value = await response.json();
+    if (response.status === 401 && token)
+      throw new ApiError(401, 'Sua sessão expirou. Entre novamente para continuar.');
+    if (response.status >= 500)
+      throw new ApiError(response.status, 'O servidor está temporariamente indisponível. Tente novamente em instantes.');
+    const value = await response.json().catch(() => {
+      throw new ApiError(response.status, 'O servidor enviou uma resposta inesperada. Tente novamente.');
+    });
     if (!response.ok)
       throw new ApiError(
         response.status,

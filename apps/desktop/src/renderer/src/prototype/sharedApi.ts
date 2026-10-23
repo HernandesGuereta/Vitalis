@@ -38,7 +38,15 @@ export async function apiRequest<T>(
     throw new Error('Sem conexão com a API. Inicie o banco e a API e tente novamente.');
   }
   if (response.status === 204) return undefined as T;
-  const value = await response.json();
+  if (response.status === 401 && token) {
+    session = null;
+    throw new Error('Sua sessão expirou. Entre novamente para continuar.');
+  }
+  if (response.status >= 500)
+    throw new Error('O servidor está temporariamente indisponível. Tente novamente em instantes.');
+  const value = await response.json().catch(() => {
+    throw new Error('O servidor enviou uma resposta inesperada. Tente novamente.');
+  });
   if (!response.ok) {
     if (response.status === 401) session = null;
     throw new Error(

@@ -9,7 +9,10 @@ const { randomUUID } = require('node:crypto');
 let dbOwner, dbPool, schema, apiServer;
 async function cleanup() {
   for (const window of BrowserWindow.getAllWindows()) window.destroy();
-  if (apiServer?.listening) await new Promise((resolve) => apiServer.close(resolve));
+  if (apiServer?.listening) {
+    apiServer.closeAllConnections();
+    await new Promise((resolve) => apiServer.close(resolve));
+  }
   if (dbPool) await dbPool.end();
   if (schema && dbOwner) await dbOwner.query(`DROP SCHEMA ${schema} CASCADE`);
   if (dbOwner) await dbOwner.end();
@@ -203,6 +206,18 @@ app.on('web-contents-created', (_event, contents) => {
         true,
       );
       await screenshot('21-janela-compacta');
+      BrowserWindow.fromWebContents(contents).setContentSize(640, 740);
+      await click('Movimentações', '.nav-item');
+      await delay(100);
+      assert.equal(await evaluate('document.activeElement === document.querySelector(".page-heading h1")'), true);
+      assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
+      assert.equal(await evaluate('document.querySelector(".table-scroll").tabIndex'), 0);
+      contents.setZoomFactor(1.5);
+      await delay(100);
+      assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
+      await screenshot('22-zoom-e-teclado');
+      contents.setZoomFactor(1);
+
       await click('Configurações', '.nav-item');
       await click('Sair da conta');
       await until('document.querySelector(".login-layout") !== null');
