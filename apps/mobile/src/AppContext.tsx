@@ -15,6 +15,7 @@ export interface MobileContext {
   refreshing: boolean;
   connectionMessage: string;
   logout: () => void;
+  scrollToTop: () => void;
 }
 export const AppContext = createContext<MobileContext | null>(null);
 export function useApp() {

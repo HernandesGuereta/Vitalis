@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   apiRequest,
   getAgendaSession,
@@ -13,18 +13,27 @@ export function SharedAgendaView() {
   const [session, setSession] = useState(getAgendaSession);
   const [rows, setRows] = useState<SharedAppointment[]>([]);
   const [error, setError] = useState('');
+  const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState('');
   const [date, setDate] = useState('');
+  const updates = useRef(0);
+  const actionLock = useRef(false);
   async function refresh() {
+    const current = ++updates.current;
     const result = await apiRequest<{ appointments: SharedAppointment[] }>('/v1/appointments');
     if (!Array.isArray(result.appointments)) throw new Error('Resposta inválida da agenda.');
-    setRows(result.appointments);
+    if (current === updates.current) {
+      setRows(result.appointments);
+      setError('');
+    }
   }
   async function action(work: () => Promise<void>) {
-    if (busy) return;
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     setError('');
+    setConfirmation('');
     try {
       await work();
     } catch (e) {
@@ -34,6 +43,7 @@ export function SharedAgendaView() {
       }
       setError(e instanceof Error ? e.message : 'Não foi possível concluir.');
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
@@ -41,11 +51,15 @@ export function SharedAgendaView() {
     if (!session) return;
     let mounted = true;
     const update = async () => {
+      const current = ++updates.current;
       try {
         const result = await apiRequest<{ appointments: SharedAppointment[] }>('/v1/appointments');
-        if (mounted && Array.isArray(result.appointments)) setRows(result.appointments);
+        if (mounted && current === updates.current && Array.isArray(result.appointments)) {
+          setRows(result.appointments);
+          setError('');
+        }
       } catch (e) {
-        if (mounted) {
+        if (mounted && current === updates.current) {
           setError(e instanceof Error ? e.message : 'Falha ao atualizar.');
           if (!getAgendaSession()) {
             setSession(null);
@@ -67,6 +81,7 @@ export function SharedAgendaView() {
     );
     return () => {
       mounted = false;
+      updates.current++;
       stop();
       window.clearInterval(timer);
       window.clearTimeout(expiry);
@@ -74,10 +89,11 @@ export function SharedAgendaView() {
   }, [session]);
   return (
     <Panel
-      title="Agendamentos para pré-triagem"
+      title="Agendamentos de doação"
       aside={session ? 'Solicitações recebidas pelo aplicativo' : 'Acesso necessário'}
     >
       <FormError message={error} />
+      {confirmation && <Notice>{confirmation}</Notice>}
       {!session ? (
         <Notice>
           Sua sessão expirou. Entre novamente no sistema para consultar os agendamentos.
@@ -130,11 +146,15 @@ export function SharedAgendaView() {
                         <td>{row.unitName}</td>
                         <td>
                           <Badge tone={row.status === 'booked' ? 'good' : 'neutral'}>
-                            {row.status === 'booked' ? 'Agendado' : 'Cancelado'}
+                            {row.status === 'cancelled'
+                              ? 'Cancelado'
+                              : row.canCancel
+                                ? 'Agendado'
+                                : 'Data encerrada'}
                           </Badge>
                         </td>
                         <td>
-                          {row.status === 'booked' &&
+                          {row.canCancel &&
                             (pending === row.id ? (
                               <>
                                 <span>Confirmar cancelamento?</span>{' '}
@@ -144,8 +164,23 @@ export function SharedAgendaView() {
                                   onClick={() =>
                                     void action(async () => {
                                       await apiRequest(`/v1/appointments/${row.id}/cancel`, 'POST');
+                                      updates.current++;
+                                      setRows((current) =>
+                                        current.map((a) =>
+                                          a.id === row.id
+                                            ? { ...a, status: 'cancelled', canCancel: false }
+                                            : a,
+                                        ),
+                                      );
                                       setPending('');
-                                      await refresh();
+                                      setConfirmation(
+                                        'Cancelamento confirmado. A vaga foi liberada.',
+                                      );
+                                      await refresh().catch(() =>
+                                        setError(
+                                          'O cancelamento foi confirmado, mas a lista não pôde ser atualizada. Tente atualizar a agenda.',
+                                        ),
+                                      );
                                     })
                                   }
                                 >
@@ -184,7 +219,11 @@ export function AppointmentSummary({ onOpen }: { onOpen: () => void }) {
       try {
         const result = await apiRequest<{ appointments: SharedAppointment[] }>('/v1/appointments');
         if (mounted) {
-          setRows(result.appointments.filter((a) => a.status === 'booked'));
+          setRows(
+            result.appointments
+              .filter((a) => a.canCancel)
+              .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)),
+          );
           setError('');
         }
       } catch {
@@ -201,7 +240,7 @@ export function AppointmentSummary({ onOpen }: { onOpen: () => void }) {
     };
   }, []);
   return (
-    <Panel title="Solicitações de pré-triagem" aside={`${rows.length} agendamento(s)`}>
+    <Panel title="Solicitações de doação" aside={`${rows.length} agendamento(s)`}>
       <FormError message={error} />
       {rows.length ? (
         <p>

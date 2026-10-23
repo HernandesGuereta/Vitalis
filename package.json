@@ -23,6 +23,7 @@
     "test:desktop": "npm run test --workspace @vitalis/desktop",
     "test:mobile": "npm run test --workspace @vitalis/mobile",
     "test:mobile:ui": "node apps/mobile/tests/run-ui.cjs",
+    "test:appointments": "npm run test:db && npm run test:mobile:ui",
     "test:api": "npm run test --workspace @vitalis/api",
     "build": "npm run build --workspace @vitalis/api && npm run build --workspace @vitalis/desktop",
     "check:mobile": "npm run check --workspace @vitalis/mobile",

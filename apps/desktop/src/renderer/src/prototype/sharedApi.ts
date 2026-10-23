@@ -5,6 +5,8 @@ export type AgendaSession = {
 };
 export type SharedAppointment = {
   id: string;
+  slotId: string;
+  canCancel: boolean;
   donorName: string;
   date: string;
   time: string;
@@ -83,7 +85,8 @@ export function watchAppointments(onChange: () => void) {
         while ((boundary = buffer.indexOf('\n\n')) !== -1) {
           const event = buffer.slice(0, boundary);
           buffer = buffer.slice(boundary + 2);
-          if (event.includes('event: appointments-changed')) onChange();
+          if (event.includes('event: appointments-changed') || event.includes('event: ready'))
+            onChange();
         }
       }
     } catch {

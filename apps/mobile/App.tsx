@@ -26,6 +26,7 @@ import { authScreens, screenTab, tabLabels } from './src/navigation';
 import type { Screen, Tab } from './src/navigation';
 import { AccountScreen, AuthScreen } from './src/screens/AccountScreens';
 import { MainScreen } from './src/screens/MainScreens';
+import { ScreeningScreen } from './src/screens/ScreeningScreen';
 
 import {
   SharedAgendaProvider,
@@ -74,6 +75,7 @@ function MobileApp() {
   const requestActive = useRef(false);
   const connectionGeneration = useRef(0);
   const scroll = useRef<ScrollView>(null);
+  const resetScroll = useCallback(() => scroll.current?.scrollTo({ y: 0, animated: false }), []);
   const root = (tab: Tab) => setHistory([tab]);
   const go = (next: Screen) => setHistory((h) => [...h, next]);
   useEffect(() => {
@@ -179,6 +181,7 @@ function MobileApp() {
         refresh,
         refreshing,
         connectionMessage,
+        scrollToTop: resetScroll,
         logout: () => {
           shared.signOut();
           setHistory(['login']);
@@ -302,6 +305,7 @@ function MobileApp() {
                 <AuthScreen key={screen} screen={screen} />
               ) : (
                 <>
+                  {screen === 'screening' && <ScreeningScreen onStepChange={resetScroll} />}
                   {screen === 'schedule' && <AppointmentScreen />}
                   {screen === 'donations' && <AppointmentScreen mode="visits" />}
                   {screen === 'privacy' && <PrivacyScreen />}
@@ -331,6 +335,7 @@ function MobileApp() {
                     key={tab.key}
                     accessibilityRole="tab"
                     accessibilityState={{ selected }}
+                    aria-selected={selected}
                     accessibilityLabel={`${tabLabels[tab.key]}${tab.key === 'alerts' && unread ? `, ${unread} avisos não lidos` : ''}`}
                     onPress={() => root(tab.key)}
                     style={({ pressed }) => [

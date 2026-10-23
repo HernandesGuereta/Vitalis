@@ -55,17 +55,15 @@ test('filtra tipo exato, cidade e preferências sem sugerir compatibilidade clí
     'O-',
   );
 });
-test('reserva exige pré-triagem, data atual, horário e evita duas visitas no mesmo dia', () => {
+test('reserva valida data e horário sem exigir pré-triagem e evita duas visitas no mesmo dia', () => {
   const demo = createMobileDemo();
   const visit = { id: 'exemplo', unitId: 'centro', date: nextDates()[0]!, time: '09:00' };
-  assert.throws(() => bookVisit(demo, visit), /pré-triagem/);
-  const ready = { ...demo, screeningDone: true };
-  const result = bookVisit(ready, visit);
+  const result = bookVisit(demo, visit);
   assert.equal(result.visits.length, 1);
-  assert.equal(ready.visits.length, 0);
+  assert.equal(demo.visits.length, 0);
   assert.throws(() => bookVisit(result, { ...visit, id: 'outro' }), /nesse dia/);
-  assert.throws(() => bookVisit(ready, { ...visit, date: '2020-01-01' }));
-  assert.throws(() => bookVisit(ready, { ...visit, time: '23:00' }));
+  assert.throws(() => bookVisit(demo, { ...visit, date: '2020-01-01' }));
+  assert.throws(() => bookVisit(demo, { ...visit, time: '23:00' }));
   assert.deepEqual(nextDates(new Date(2026, 11, 30, 12)).slice(0, 2), ['2026-12-31', '2027-01-01']);
 });
 test('valida perfil e endereço; não aceita senha ou caminho na URL', () => {

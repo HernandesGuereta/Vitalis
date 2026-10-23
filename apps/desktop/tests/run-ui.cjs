@@ -21,24 +21,37 @@ async function main() {
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_RENDERER_URL;
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  for (const workspace of ['@vitalis/api', '@vitalis/desktop']) {
-    const result = spawnSync(npm, ['run', 'build', '--workspace', workspace], {
+  const normalEnv = { ...process.env };
+  delete normalEnv.ELECTRON_RUN_AS_NODE;
+  delete normalEnv.ELECTRON_RENDERER_URL;
+  try {
+    for (const workspace of ['@vitalis/api', '@vitalis/desktop']) {
+      const result = spawnSync(npm, ['run', 'build', '--workspace', workspace], {
+        env,
+        cwd: root,
+        stdio: 'inherit',
+      });
+      if (result.status !== 0) {
+        process.exitCode = result.status ?? 1;
+        return;
+      }
+    }
+    const result = spawnSync(require('electron'), [join(__dirname, 'ui-smoke.cjs')], {
       env,
       cwd: root,
       stdio: 'inherit',
     });
-    if (result.status !== 0) {
-      process.exitCode = result.status ?? 1;
-      return;
-    }
+    if (result.error) console.error(result.error);
+    process.exitCode = result.status ?? 1;
+  } finally {
+    // A porta aleatória só pertence ao teste. Restaurar o build de uso normal.
+    const restored = spawnSync(npm, ['run', 'build', '--workspace', '@vitalis/desktop'], {
+      env: normalEnv,
+      cwd: root,
+      stdio: 'inherit',
+    });
+    if (restored.status !== 0) process.exitCode = restored.status ?? 1;
   }
-  const result = spawnSync(require('electron'), [join(__dirname, 'ui-smoke.cjs')], {
-    env,
-    cwd: root,
-    stdio: 'inherit',
-  });
-  if (result.error) console.error(result.error);
-  process.exitCode = result.status ?? 1;
 }
 main().catch((error) => {
   console.error(error);

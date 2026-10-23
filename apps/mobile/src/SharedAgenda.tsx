@@ -21,6 +21,7 @@ import { useApp } from './AppContext';
 type SharedState = {
   session: SharedSession | null;
   appointments: SharedAppointment[];
+  refreshError: string;
   authenticate: (url: string, email: string, password: string, name?: string) => Promise<void>;
   signOut: () => void;
   setSession: (session: SharedSession | null) => void;
@@ -36,11 +37,13 @@ export function useSharedAgenda() {
 export function SharedAgendaProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SharedSession | null>(null);
   const [appointments, setAppointments] = useState<SharedAppointment[]>([]);
+  const [refreshError, setRefreshError] = useState('');
   const generation = useRef(0);
   function signOut() {
     generation.current++;
     setSession(null);
     setAppointments([]);
+    setRefreshError('');
     if (session)
       void sharedRequest(session.url, '/v1/auth/logout', session.token, 'POST').catch(() => {});
   }
@@ -77,10 +80,17 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
         session.token,
       );
       if (!Array.isArray(result.appointments)) throw new Error('Resposta inválida da agenda.');
-      if (current === generation.current) setAppointments(result.appointments);
+      if (current === generation.current) {
+        setAppointments(result.appointments);
+        setRefreshError('');
+      }
     } catch (error) {
       if (current === generation.current && error instanceof ApiError && error.status === 401)
         signOut();
+      else if (current === generation.current)
+        setRefreshError(
+          'Não foi possível atualizar a agenda. Confira a conexão e tente atualizar novamente.',
+        );
       throw error;
     }
   }
@@ -101,10 +111,15 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         appointments,
+        refreshError,
         authenticate,
         signOut,
         refresh,
-        setAppointments,
+        setAppointments: (value) => {
+          generation.current++;
+          setAppointments(value);
+          setRefreshError('');
+        },
         setSession: (value) => {
           if (session?.token !== value?.token) {
             generation.current++;
@@ -121,7 +136,7 @@ export function SharedAgendaProvider({ children }: { children: ReactNode }) {
 
 export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'visits' }) {
   const shared = useSharedAgenda();
-  const { root, unitId, selectUnit } = useApp();
+  const { root, unitId, selectUnit, scrollToTop } = useApp();
   const { session, appointments } = shared;
   const [units, setUnits] = useState<SharedUnit[]>([]);
   const [slots, setSlots] = useState<SharedSlot[]>([]);
@@ -129,12 +144,21 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
   const [selectedDate, setSelectedDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [syncError, setSyncError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState('');
+  useEffect(() => {
+    if (error || message) scrollToTop();
+  }, [error, message, scrollToTop]);
   const attempt = useRef({ slot: '', id: requestId() });
+  const uncertain = useRef(false);
+  const actionLock = useRef(false);
+  const loading = useRef(false);
   const generation = useRef(0);
   async function action(work: () => Promise<void>) {
-    if (busy) return;
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     setError('');
     setMessage('');
@@ -144,77 +168,123 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
       if (e instanceof ApiError && e.status === 401) shared.signOut();
       setError(e instanceof Error ? e.message : 'Não foi possível concluir.');
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   }
   async function load() {
     if (!session) return;
     const current = ++generation.current;
-    const [agenda, available, centers] = await Promise.all([
-      sharedRequest<{ appointments: SharedAppointment[] }>(
-        session.url,
-        '/v1/appointments',
-        session.token,
-      ),
-      sharedRequest<{ slots: SharedSlot[] }>(
-        session.url,
-        `/v1/slots?unitId=${encodeURIComponent(unitId)}`,
-        session.token,
-      ),
-      sharedRequest<{ units: SharedUnit[] }>(session.url, '/v1/units', session.token),
-    ]);
-    if (current !== generation.current) return;
-    if (
-      !Array.isArray(agenda.appointments) ||
-      !Array.isArray(available.slots) ||
-      !Array.isArray(centers.units)
-    )
-      throw new Error('Resposta inválida da agenda.');
-    shared.setAppointments(agenda.appointments);
-    setSlots(available.slots);
-    setUnits(centers.units);
+    loading.current = true;
+    try {
+      const [agenda, available, centers] = await Promise.all([
+        sharedRequest<{ appointments: SharedAppointment[] }>(
+          session.url,
+          '/v1/appointments',
+          session.token,
+        ),
+        sharedRequest<{ slots: SharedSlot[] }>(
+          session.url,
+          `/v1/slots?unitId=${encodeURIComponent(unitId)}`,
+          session.token,
+        ),
+        sharedRequest<{ units: SharedUnit[] }>(session.url, '/v1/units', session.token),
+      ]);
+      if (current !== generation.current) return;
+      if (
+        !Array.isArray(agenda.appointments) ||
+        !Array.isArray(available.slots) ||
+        !Array.isArray(centers.units)
+      )
+        throw new Error('Resposta inválida da agenda.');
+      shared.setAppointments(agenda.appointments);
+      setSlots(available.slots);
+      setUnits(centers.units);
+      setLoaded(true);
+      setSyncError('');
+      if (
+        uncertain.current &&
+        agenda.appointments.some((a) => a.slotId === attempt.current.slot && a.status === 'booked')
+      ) {
+        uncertain.current = false;
+        attempt.current = { slot: '', id: requestId() };
+        setSlotId('');
+        setError('');
+        setMessage('Agendamento confirmado! Sua solicitação já está na agenda do hemocentro.');
+      }
+    } finally {
+      if (current === generation.current) loading.current = false;
+    }
   }
   useEffect(() => {
+    let mounted = true;
+    setLoaded(false);
     setSlots([]);
     setSlotId('');
     setSelectedDate('');
     setPending('');
+    setError('');
+    setSyncError('');
+    setMessage('');
     if (!session) return;
     setBusy(true);
     void load()
       .catch((e) => {
+        if (!mounted) return;
         if (e instanceof ApiError && e.status === 401) shared.signOut();
-        else setError(e instanceof Error ? e.message : 'Falha ao carregar.');
+        else setSyncError(e instanceof Error ? e.message : 'Falha ao carregar.');
       })
-      .finally(() => setBusy(false));
+      .finally(() => {
+        if (mounted && !actionLock.current) setBusy(false);
+      });
+    const timer = setInterval(() => {
+      if (
+        mode !== 'booking' ||
+        AppState.currentState !== 'active' ||
+        actionLock.current ||
+        loading.current
+      )
+        return;
+      void load().catch((e) => {
+        if (!mounted) return;
+        if (e instanceof ApiError && e.status === 401) shared.signOut();
+        else
+          setSyncError('Não foi possível atualizar as vagas. Tente atualizar antes de confirmar.');
+      });
+    }, 5000);
     return () => {
+      mounted = false;
+      clearInterval(timer);
       generation.current++;
     };
-  }, [session?.token, unitId]);
+  }, [session?.token, unitId, mode]);
   const selected = slots.find((slot) => slot.id === slotId);
+  const existing = appointments.find((a) => a.status === 'booked' && a.date === selectedDate);
+  const blockedDay = existing && !(uncertain.current && existing.slotId === attempt.current.slot);
   if (!session) return null;
   return (
     <>
       <Title
         subtitle={
           mode === 'booking'
-            ? 'Escolha quando ir ao hemocentro para realizar a pré-triagem presencial.'
+            ? 'Escolha a unidade e o horário para sua visita de doação.'
             : 'Acompanhe as visitas solicitadas ao hemocentro.'
         }
       >
-        {mode === 'booking' ? 'Agendar pré-triagem' : 'Meus agendamentos'}
+        {mode === 'booking' ? 'Agendar doação' : 'Meus agendamentos'}
       </Title>
-      <ErrorText message={error} />
+      <ErrorText testID="appointment-error" message={error || syncError || shared.refreshError} />
+      {busy && !loaded && <Notice>Carregando horários e agendamentos…</Notice>}
       {message && (
-        <Text accessibilityLiveRegion="polite" style={s.body}>
+        <Text testID="appointment-feedback" accessibilityLiveRegion="polite" style={s.body}>
           {message}
         </Text>
       )}
       {mode === 'booking' && (
         <>
           <Notice>
-            As perguntas e a avaliação serão feitas pela equipe no hemocentro. Você não precisa
-            responder a uma pré-triagem digital para agendar.
+            Você pode fazer a pré-triagem no aplicativo antes de sair de casa. Ela é orientativa:
+            reservar um horário não confirma aptidão, e a triagem completa continua no hemocentro.
           </Notice>
           <Text style={s.sectionTitle}>Escolha o hemocentro</Text>
           <View style={s.choices}>
@@ -223,6 +293,7 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
                 key={unit.id}
                 title={unit.name}
                 selected={unit.id === unitId}
+                disabled={busy}
                 onPress={() => selectUnit(unit.id)}
               />
             ))}
@@ -234,19 +305,30 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
                 key={date}
                 title={dateLabel(date, true)}
                 selected={date === selectedDate}
+                disabled={busy}
                 onPress={() => {
+                  setError('');
                   setSelectedDate(date);
                   setSlotId('');
                 }}
               />
             ))}
           </View>
-          {!busy && !slots.length && (
+          {loaded && !busy && !slots.length && (
             <Notice>
               Não há horários futuros. A equipe precisa disponibilizar novos horários.
             </Notice>
           )}
-          {selectedDate && (
+          {blockedDay && !message && (
+            <Notice>
+              Você já tem um agendamento nesse dia, na {existing.unitName}, às {existing.time}.
+              Consulte sua agenda antes de reservar outro horário.
+            </Notice>
+          )}
+          {blockedDay && !message && (
+            <Button secondary title="Ver meus agendamentos" onPress={() => root('donations')} />
+          )}
+          {selectedDate && !blockedDay && (
             <>
               <Text style={s.sectionTitle}>Escolha o horário</Text>
               <View style={s.choices}>
@@ -255,15 +337,23 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
                   .map((slot) => (
                     <Choice
                       key={slot.id}
-                      title={`${slot.time} · ${slot.available} vaga(s)`}
+                      title={
+                        slot.available > 0
+                          ? `${slot.time} · ${slot.available} vaga(s)`
+                          : `${slot.time} · Esgotado`
+                      }
                       selected={slot.id === slotId}
-                      onPress={() => setSlotId(slot.id)}
+                      disabled={busy || slot.available < 1}
+                      onPress={() => {
+                        setError('');
+                        setSlotId(slot.id);
+                      }}
                     />
                   ))}
               </View>
             </>
           )}
-          {selected && (
+          {selected && !blockedDay && (
             <Card pink>
               <Label>CONFIRA SEU AGENDAMENTO</Label>
               <Text style={s.cardTitle}>
@@ -272,6 +362,7 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
               <Body>{units.find((unit) => unit.id === unitId)?.name}</Body>
               <Body>{session.user.name}</Body>
               <Button
+                testID="confirm-appointment"
                 title="Confirmar agendamento"
                 disabled={selected.available < 1}
                 busy={busy}
@@ -279,16 +370,28 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
                   void action(async () => {
                     if (attempt.current.slot !== selected.id)
                       attempt.current = { slot: selected.id, id: requestId() };
-                    await sharedRequest(session.url, '/v1/appointments', session.token, 'POST', {
-                      slotId: selected.id,
-                      requestId: attempt.current.id,
-                    });
+                    try {
+                      await sharedRequest(session.url, '/v1/appointments', session.token, 'POST', {
+                        slotId: selected.id,
+                        requestId: attempt.current.id,
+                      });
+                    } catch (e) {
+                      uncertain.current = !(e instanceof ApiError) || e.status >= 500;
+                      if (e instanceof ApiError && e.status === 409) await load().catch(() => {});
+                      throw e;
+                    }
+                    // Confirmação da gravação é independente da atualização seguinte da lista.
+                    uncertain.current = false;
+                    setSlotId('');
+                    attempt.current = { slot: '', id: requestId() };
                     setMessage(
                       'Agendamento realizado! Sua solicitação já está na agenda do hemocentro.',
                     );
-                    await load();
-                    setSlotId('');
-                    attempt.current = { slot: '', id: requestId() };
+                    await load().catch(() =>
+                      setSyncError(
+                        'O agendamento foi confirmado, mas a lista não pôde ser atualizada. Tente atualizar a agenda.',
+                      ),
+                    );
                   })
                 }
               />
@@ -302,8 +405,8 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
       )}
       {mode === 'visits' && (
         <>
-          <Button title="Agendar pré-triagem" onPress={() => root('home')} secondary />
-          {!appointments.length && (
+          <Button title="Agendar doação" onPress={() => root('home')} secondary />
+          {loaded && !appointments.length && (
             <Notice>
               Você ainda não tem agendamentos. Faça sua solicitação pela página inicial.
             </Notice>
@@ -311,15 +414,17 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
           {appointments.map((appointment) => (
             <Card key={appointment.id}>
               <Label>
-                {appointment.status === 'booked'
-                  ? 'AGENDADO · PRÉ-TRIAGEM PRESENCIAL'
-                  : 'CANCELADO'}
+                {appointment.status === 'cancelled'
+                  ? 'CANCELADO'
+                  : appointment.canCancel
+                    ? 'AGENDADO · VISITA PARA DOAÇÃO'
+                    : 'DATA ENCERRADA'}
               </Label>
               <Text style={s.cardTitle}>
                 {dateLabel(appointment.date)} · {appointment.time}
               </Text>
               <Body>{appointment.unitName}</Body>
-              {appointment.status === 'booked' &&
+              {appointment.canCancel &&
                 (pending === appointment.id ? (
                   <>
                     <Body>Deseja cancelar este agendamento?</Body>
@@ -334,9 +439,20 @@ export function AppointmentScreen({ mode = 'booking' }: { mode?: 'booking' | 'vi
                             session.token,
                             'POST',
                           );
-                          await load();
                           setPending('');
                           setMessage('Agendamento cancelado.');
+                          shared.setAppointments(
+                            appointments.map((a) =>
+                              a.id === appointment.id
+                                ? { ...a, status: 'cancelled', canCancel: false }
+                                : a,
+                            ),
+                          );
+                          await load().catch(() =>
+                            setSyncError(
+                              'O cancelamento foi confirmado, mas a lista não pôde ser atualizada. Tente atualizar a agenda.',
+                            ),
+                          );
                         })
                       }
                     />

@@ -7,6 +7,7 @@ export type Screen =
   | 'alert'
   | 'unit'
   | 'schedule'
+  | 'screening'
   | 'profile'
   | 'preferences'
   | 'saved'

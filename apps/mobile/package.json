@@ -9,7 +9,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "node --test tests/model.test.ts",
+    "test": "node --test tests/model.test.ts tests/screening.test.ts",
     "typecheck": "tsc --noEmit",
     "check": "expo install --check",
     "export": "expo export --platform android --platform ios --output-dir dist",

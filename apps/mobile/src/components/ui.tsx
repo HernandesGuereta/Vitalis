@@ -69,6 +69,8 @@ export function Button({
       testID={testID}
       accessibilityRole="button"
       accessibilityState={{ disabled: disabled || busy, busy }}
+      aria-disabled={disabled || busy}
+      aria-busy={busy}
       disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => [
@@ -103,9 +105,14 @@ export function Notice({ children, warning = false }: { children: ReactNode; war
     </View>
   );
 }
-export function ErrorText({ message }: { message: string }) {
+export function ErrorText({ message, testID }: { message: string; testID?: string }) {
   return message ? (
-    <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" style={s.error}>
+    <Text
+      testID={testID}
+      accessibilityRole="alert"
+      accessibilityLiveRegion="assertive"
+      style={s.error}
+    >
       {message}
     </Text>
   ) : null;
@@ -135,17 +142,27 @@ export function Choice({
   title,
   selected,
   onPress,
+  disabled = false,
 }: {
   title: string;
   selected: boolean;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{ checked: selected, disabled }}
+      aria-checked={selected}
+      aria-disabled={disabled}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [s.choice, selected && s.choiceSelected, pressed && s.pressed]}
+      style={({ pressed }) => [
+        s.choice,
+        selected && s.choiceSelected,
+        pressed && s.pressed,
+        disabled && { opacity: 0.55 },
+      ]}
     >
       <Text style={[s.choiceText, selected && { color: colors.accent, fontWeight: '700' }]}>
         {title}

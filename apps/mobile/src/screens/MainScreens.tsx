@@ -16,7 +16,7 @@ import {
   s,
 } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { dateLabel, exampleAlerts, normalize, units, visibleAlerts } from '../data/model';
+import { exampleAlerts, normalize, units, visibleAlerts } from '../data/model';
 import type { MobileAlert } from '../data/model';
 import type { Screen } from '../navigation';
 
@@ -68,7 +68,7 @@ export function MainScreen({ screen }: { screen: Screen }) {
   if (screen === 'home')
     return (
       <>
-        <Title subtitle="Seu próximo gesto começa com uma visita.">
+        <Title subtitle="Prepare seu próximo gesto, no seu tempo.">
           Olá, {data.profile.name.split(' ')[0]}.
         </Title>
         <View
@@ -83,16 +83,21 @@ export function MainScreen({ screen }: { screen: Screen }) {
             },
           ]}
         >
-          <Icon name="calendar" color="#efbbc8" size={36} />
+          <Icon name="shield" color="#efbbc8" size={36} />
           <Text style={{ fontSize: 26, lineHeight: 34, fontWeight: '700', color: '#fff' }}>
-            Vamos marcar sua pré-triagem?
+            Posso doar sangue hoje?
           </Text>
           <Text style={{ fontSize: 17, lineHeight: 26, color: '#fff' }}>
-            Escolha o hemocentro e um horário. Sua solicitação será enviada diretamente para a
-            unidade.
+            Responda a algumas perguntas e receba uma orientação inicial, sem sair de casa.
           </Text>
-          <Button title="Agendar pré-triagem" onPress={() => go('schedule')} />
+          <Button title="Fazer pré-triagem" onPress={() => go('screening')} />
         </View>
+        <RowAction
+          icon="calendar"
+          title="Agendar doação"
+          detail="Escolha uma unidade e um horário para sua visita"
+          onPress={() => go('schedule')}
+        />
         <RowAction
           icon="calendar"
           title="Meus agendamentos"
@@ -104,8 +109,8 @@ export function MainScreen({ screen }: { screen: Screen }) {
           onPress={() => root('donations')}
         />
         <Notice>
-          A pré-triagem e a avaliação para doar serão realizadas presencialmente pela equipe do
-          hemocentro.
+          A pré-triagem do aplicativo orienta. A confirmação de aptidão para doar é feita pela
+          equipe do hemocentro após a triagem completa.
         </Notice>
         <View style={s.sectionRow}>
           <Text style={s.sectionTitle}>Sua região precisa de você</Text>
@@ -200,7 +205,8 @@ export function MainScreen({ screen }: { screen: Screen }) {
           e confirma sua aptidão presencialmente.
         </Notice>
         <Button title="Ver unidades de coleta" onPress={() => root('units')} />
-        <Button secondary title="Agendar pré-triagem" onPress={() => go('schedule')} />
+        <Button secondary title="Fazer pré-triagem" onPress={() => go('screening')} />
+        <Button secondary title="Agendar doação" onPress={() => go('schedule')} />
       </>
     );
   }
@@ -263,10 +269,11 @@ export function MainScreen({ screen }: { screen: Screen }) {
           <Text style={s.cardTitle}>Como funciona</Text>
           <Body muted>
             Escolha um horário e confirme sua visita. A solicitação é recebida pela unidade fictícia
-            no desktop; a pré-triagem será realizada presencialmente.
+            no desktop. A triagem completa será realizada pela equipe antes da doação.
           </Body>
         </Card>
-        <Button title="Agendar pré-triagem" onPress={() => go('schedule')} />
+        <Button title="Agendar doação" onPress={() => go('schedule')} />
+        <Button secondary title="Fazer pré-triagem" onPress={() => go('screening')} />
         <Notice>A avaliação presencial é indispensável para confirmar sua aptidão.</Notice>
       </>
     );
@@ -329,12 +336,12 @@ export function MainScreen({ screen }: { screen: Screen }) {
         </Title>
         {[
           [
-            'Prepare sua visita',
-            'Escolha o hemocentro e solicite um horário para a pré-triagem presencial.',
+            'Conheça sua situação inicial',
+            'Faça a pré-triagem no aplicativo para identificar cuidados e dúvidas antes de sair de casa.',
           ],
           [
-            'Siga as orientações',
-            'Confirme as informações e a disponibilidade diretamente com a equipe antes de ir.',
+            'Organize sua visita',
+            'Esclareça suas dúvidas com a equipe e, quando for visitar, escolha uma unidade e um horário.',
           ],
           [
             'Converse com a equipe',

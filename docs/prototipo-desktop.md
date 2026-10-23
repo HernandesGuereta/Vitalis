@@ -25,7 +25,7 @@ npm run start:desktop
 
 | Área | Ações demonstrativas |
 | --- | --- |
-| Visão geral | Solicitações de pré-triagem recebidas do aplicativo, com acesso à agenda. Indicadores derivados dos registros locais, destaque do estoque crítico, próximo atendimento e movimentações recentes. |
+| Visão geral | Solicitações de agendamento de doação recebidas do aplicativo, com acesso à agenda. Indicadores derivados dos registros locais, destaque do estoque crítico, próximo atendimento e movimentações recentes. |
 | Estoque de sangue | Tabela dos oito tipos sanguíneos, níveis ilustrativos e filtros; cada ação Movimentar abre o formulário com o tipo selecionado. |
 | Movimentações | Histórico pesquisável, entradas/saídas e confirmação do registro. A quantidade deve ser inteira e positiva; saídas acima do saldo são rejeitadas. Origem/destino, observação e validade informada podem acompanhar o registro. |
 | Doadores | Busca, filtro sanguíneo, perfil, histórico, cadastro e edição de nomes, identificação fictícia, contato, cidade e canais autorizados. |
@@ -78,3 +78,5 @@ VITALIS_TEST_SCREENSHOTS_DIR=/tmp/vitalis-capturas npm run test:ui --workspace @
 ## Compartilhar avisos com o mobile
 
 Após confirmar um envio simulado, a ação **Publicar no aplicativo** envia o conteúdo público para a API de demonstração em `127.0.0.1:3000`. Ela também está disponível ao abrir a prévia de um alerta já simulado. É necessário iniciar PostgreSQL e API e autenticar no login inicial do desktop; uma falha mantém a campanha local e permite tentar novamente. Não são enviados dados dos destinatários. O guia [prototipo-mobile.md](prototipo-mobile.md) explica a configuração do celular. E-mail e WhatsApp seguem simulados, e os avisos não são push em segundo plano.
+
+A pré-triagem digital do mobile é apenas orientativa e suas respostas não chegam ao desktop. A agenda recebe a reserva de visita para doação, sem respostas clínicas ou declaração de aptidão. A pré-triagem dos perfis administrativos antigos continua sendo uma simulação local, separada desse questionário.

@@ -79,3 +79,5 @@ npm run test:db
 Se o banco já existir, não precisa recriá-lo. `TEST_DATABASE_URL` deve apontar para esse banco. Os testes criam e removem apenas esquemas temporários com nomes gerados; não limpam tabelas da demonstração. Verificam cadastro sem elevação de privilégios, persistência, lotação concorrente, duplicidade, isolamento por conta/unidade, atualização automática, cancelamento, exportação, exclusão, revogação da sessão e permissões do usuário restrito.
 
 Consulte [a agenda compartilhada](../docs/agendamentos-compartilhados.md) e [as decisões de privacidade](../docs/privacidade.md).
+
+O teste `apps/api/tests/appointments.test.ts` usa outro esquema isolado e o usuário restrito para testar disputas de capacidade, repetição simultânea de tentativas, uma reserva por doador/dia entre unidades, cancelamento concorrente/repetido, datas fora da janela, histórico, expiração e reinício. O cancelamento bloqueia o mesmo horário usado na reserva e só grava um evento quando há mudança efetiva de situação.

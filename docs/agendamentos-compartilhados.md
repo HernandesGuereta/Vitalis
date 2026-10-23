@@ -38,18 +38,24 @@ O cadastro público aceita somente doadores. A API rejeita campos de papel/unida
 
 ## Demonstrar o agendamento e o cancelamento
 
-1. Entre no mobile e toque em **Agendar pré-triagem** na página inicial.
+1. Entre no mobile e toque em **Agendar doação** na página inicial.
 2. Escolha **Unidade Vitalis Centro**, dia e horário; confira os dados e toque em **Confirmar agendamento**. O servidor valida as vagas e vincula a reserva ao usuário autenticado.
-3. Entre no desktop com o acesso predefinido. A visão geral apresenta **Solicitações de pré-triagem**; abra **Ver agendamentos recebidos** ou **Agendamentos** para consultar a tabela.
+3. Entre no desktop com o acesso predefinido. A visão geral apresenta **Solicitações de doação**; abra **Ver agendamentos recebidos** ou **Agendamentos** para consultar a tabela.
 4. Ao confirmar no mobile, a reserva aparece automaticamente na unidade correspondente. O desktop recebe um evento autenticado da API após a gravação no PostgreSQL e consulta a lista atual. Também consulta a cada 5 segundos enquanto a tela está aberta, caso a conexão de eventos caia.
 5. No mobile, abra **Meus agendamentos** na página inicial ou a aba **Agenda**. A lista também é consultada a cada 5 segundos com o aplicativo ativo.
-6. Cancele pelo mobile ou pelo desktop, confirmando a ação. A situação passa para Cancelado e a vaga é liberada. Apenas reservas futuras e ativas podem ser canceladas.
+6. Cancele pelo mobile ou pelo desktop, confirmando a ação. A situação passa para Cancelado e a vaga é liberada. Apenas reservas futuras e ativas podem iniciar um cancelamento. Repetir o cancelamento já concluído retorna sucesso, sem duplicar eventos ou liberar uma vaga adicional.
 
-A solicitação é para comparecer ao hemocentro e realizar a **pré-triagem presencial**. Não há questionário digital obrigatório, avaliação de aptidão ou confirmação de doação pelo aplicativo.
+A solicitação reserva uma **visita para doação**. Na página inicial, **Fazer pré-triagem** abre um questionário digital independente para orientação antes de sair de casa. Respostas e resultado não são enviados junto do agendamento nem armazenados na conta. A triagem completa e a decisão de aptidão permanecem com a equipe presencial. Consulte [a pré-triagem digital](pre-triagem-digital.md).
 
 A conexão de eventos usa SSE com token no cabeçalho Authorization, sem token na URL. O servidor revalida a sessão e encerra a conexão ao expirar. A notificação imediata funciona no processo atual da API; múltiplas instâncias exigirão distribuição dos eventos. A consulta periódica continua lendo o estado autoritativo do PostgreSQL.
 
 O servidor controla duas vagas por horário e uma reserva ativa por doador/dia. Tentativas simultâneas são validadas em transação no PostgreSQL. Repetir a mesma tentativa não duplica a reserva. Uma falha de rede pode ocorrer depois de o servidor gravar: atualize a agenda antes de tentar novamente.
+
+A tela bloqueia horários esgotados e informa quando já existe reserva do usuário naquele dia. A disponibilidade é consultada automaticamente com a tela aberta; a confirmação final das vagas é sempre do servidor. Trocar de unidade limpa o dia e o horário selecionados.
+
+Se a confirmação da gravação chegou, uma falha na consulta seguinte não transforma o resultado em falha de reserva: a confirmação é preservada e a tela informa que precisa atualizar a lista. Se a resposta da gravação se perdeu, a tentativa é mantida para uma repetição segura; atualizar a lista também permite reconhecer a reserva já gravada. O mesmo princípio se aplica ao cancelamento. Não são feitas repetições automáticas de escrita.
+
+As respostas da API incluem `slotId` e `canCancel`. O último é calculado pelo servidor considerando situação e instante do atendimento; os clientes não oferecem cancelamento de horários passados nem os exibem como próximas solicitações na visão geral. Uma sessão inválida/expirada devolve o usuário à tela de acesso.
 
 O seed disponibiliza os sete dias seguintes, às 09:00, 09:30 e 10:00. Reexecutá-lo acrescenta os próximos dias sem substituir reservas existentes. A gestão visual de horários e capacidade fica para uma próxima etapa.
 
@@ -107,6 +113,9 @@ npm run validate
 npm run test:db
 npm run test:mobile:ui
 npm run test:ui --workspace @vitalis/desktop
+npm run test:appointments
 ```
 
 `validate` não exige PostgreSQL para seus testes básicos. Os testes de banco e de interface exigem `TEST_DATABASE_URL` preparado e o usuário `vitalis_app` criado. Os testes gráficos usam uma porta livre para sua API, sem interromper a API da demonstração. Os testes usam dados e esquemas temporários, preservando a demonstração do usuário. A validação gráfica do mobile é pela prévia web, não por um aparelho Android/iOS real.
+
+`test:appointments` executa o banco real e a jornada gráfica em sequência. A API da jornada gráfica também usa `vitalis_app`; a credencial de manutenção apenas prepara e confere os dados do esquema temporário. Consulte [validacao-agendamentos.md](validacao-agendamentos.md) para a matriz de cenários e os limites da verificação.

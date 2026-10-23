@@ -17,7 +17,6 @@ export type MobileData = {
   version: 1;
   profile: Profile;
   preferences: Preferences;
-  screeningDone: boolean;
   visits: Visit[];
   readAlertIds: string[];
   remoteAlerts: MobileAlert[];
@@ -71,7 +70,6 @@ export function createMobileDemo(): MobileData {
       bloodType: 'O+',
     },
     preferences: { ownType: true, otherTypes: true },
-    screeningDone: false,
     visits: [],
     readAlertIds: [],
     remoteAlerts: [],
@@ -142,7 +140,6 @@ export function restoreMobile(raw: string): MobileData {
     !d.preferences ||
     typeof d.preferences.ownType !== 'boolean' ||
     typeof d.preferences.otherTypes !== 'boolean' ||
-    typeof d.screeningDone !== 'boolean' ||
     typeof d.apiUrl !== 'string' ||
     d.apiUrl.length > 200 ||
     !Array.isArray(d.visits) ||
@@ -183,7 +180,6 @@ export function dateLabel(date: string, short = false) {
   );
 }
 export function bookVisit(data: MobileData, visit: Visit): MobileData {
-  if (!data.screeningDone) throw new Error('Responda à pré-triagem antes de reservar um horário.');
   if (
     !units.some((u) => u.id === visit.unitId) ||
     !nextDates().includes(visit.date) ||

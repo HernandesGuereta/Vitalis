@@ -27,7 +27,7 @@ const object = (value: unknown): Record<string, unknown> => {
     throw new HttpError(400, 'Dados inválidos.');
   return value as Record<string, unknown>;
 };
-const projection = `SELECT a.id,a.status,to_char(s.starts_at AT TIME ZONE 'America/Sao_Paulo','YYYY-MM-DD') AS date,
+const projection = `SELECT a.id,a.status,a.slot_id AS "slotId",(a.status='booked' AND s.starts_at>now()) AS "canCancel",to_char(s.starts_at AT TIME ZONE 'America/Sao_Paulo','YYYY-MM-DD') AS date,
   to_char(s.starts_at AT TIME ZONE 'America/Sao_Paulo','HH24:MI') AS time,
   s.unit_id AS "unitId",u.name AS "unitName",a.created_at AS "createdAt"
   FROM appointments a JOIN slots s ON s.id=a.slot_id JOIN units u ON u.id=s.unit_id`;
@@ -360,20 +360,38 @@ export function protectedRoutes(pool?: Pool) {
     const client = await requirePool().connect();
     try {
       await client.query('BEGIN');
-      const result = await client.query(
-        `UPDATE appointments a SET status='cancelled',cancelled_at=now() FROM slots s
-        WHERE a.id=$1 AND a.slot_id=s.id AND s.starts_at > now() AND a.status='booked'
-        AND (($2='donor' AND a.donor_id=$3) OR ($2='admin' AND s.unit_id=$4)) RETURNING a.id,s.unit_id`,
-        [req.params.id, actor.role, actor.id, actor.unitId],
+      // A reserva e o cancelamento disputam o mesmo bloqueio de horário.
+      const slot = (
+        await client.query(
+          `SELECT s.id,s.unit_id,s.starts_at>now() AS future FROM slots s JOIN appointments a ON a.slot_id=s.id
+        WHERE a.id=$1 AND (($2='donor' AND a.donor_id=$3) OR ($2='admin' AND s.unit_id=$4)) FOR UPDATE OF s`,
+          [req.params.id, actor.role, actor.id, actor.unitId],
+        )
+      ).rows[0];
+      if (!slot) throw new HttpError(404, 'Agendamento não encontrado.');
+      const appointment = (
+        await client.query('SELECT status FROM appointments WHERE id=$1 FOR UPDATE', [
+          req.params.id,
+        ])
+      ).rows[0];
+      if (!appointment) throw new HttpError(404, 'Agendamento não encontrado.');
+      // Uma resposta perdida pode ser repetida sem erro e sem duplicar a auditoria.
+      if (appointment.status === 'cancelled') {
+        await client.query('COMMIT');
+        res.sendStatus(204);
+        return;
+      }
+      if (!slot.future) throw new HttpError(409, 'O horário deste agendamento já passou.');
+      await client.query(
+        "UPDATE appointments SET status='cancelled',cancelled_at=now() WHERE id=$1",
+        [req.params.id],
       );
-      if (!result.rowCount)
-        throw new HttpError(404, 'Agendamento não encontrado ou não pode mais ser cancelado.');
       await client.query(
         `INSERT INTO audit_events(actor_id,action,resource_id) VALUES($1,'appointment_cancelled',$2)`,
         [actor.id, req.params.id],
       );
       await client.query('COMMIT');
-      changes.emit('appointments', result.rows[0].unit_id);
+      changes.emit('appointments', slot.unit_id);
       res.sendStatus(204);
     } catch (error) {
       await client.query('ROLLBACK');

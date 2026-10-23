@@ -2,7 +2,7 @@
 
 Monorepositório TypeScript da plataforma de doação de sangue, com aplicativo do doador e administrador desktop baseados nos PDFs de design e na logo oficial da equipe.
 
-A etapa atual tem **cadastro de doador, login por e-mail/senha e agendamentos ligados ao PostgreSQL**. O usuário agenda a pré-triagem presencial pela página inicial do mobile, e a solicitação aparece automaticamente no desktop da unidade. Ambos usam uma única autenticação em cada aplicativo. O estoque, os cadastros administrativos e os demais fluxos anteriores continuam como demonstrações locais, identificadas separadamente.
+A etapa atual tem **cadastro de doador, login por e-mail/senha e agendamentos ligados ao PostgreSQL**. Na página inicial do mobile, o usuário faz uma pré-triagem digital curta para obter uma orientação inicial antes de sair de casa. O agendamento de doação é uma ação separada, e a reserva aparece automaticamente no desktop da unidade. Ambos usam uma única autenticação em cada aplicativo. O estoque, os cadastros administrativos e os demais fluxos anteriores continuam como demonstrações locais, identificadas separadamente.
 
 Não há integração com hemocentros reais, decisão de aptidão clínica, push, envio de e-mail ou WhatsApp. Use somente dados fictícios. Consulte [a agenda compartilhada](docs/agendamentos-compartilhados.md), [as decisões de privacidade](docs/privacidade.md) e [o contexto do produto](docs/contexto.md).
 
@@ -72,7 +72,7 @@ Também existem `npm run android --workspace @vitalis/mobile` e `npm run ios --w
 ## Testar a jornada compartilhada
 
 1. No mobile, toque em **Criar minha conta**. Informe nome e e-mail fictícios, uma senha de 12 a 128 caracteres e sua confirmação. O cadastro cria somente doadores e já abre a página inicial. Nos próximos acessos, use **Entrar**.
-2. Na página inicial, toque em **Agendar pré-triagem**, escolha unidade, dia e horário e confirme. Para demonstrar com o acesso padrão do desktop, escolha **Unidade Vitalis Centro**. As perguntas e a avaliação serão feitas presencialmente no hemocentro.
+2. Na página inicial, toque em **Fazer pré-triagem** para responder ao questionário orientativo. As respostas ficam somente na tela e são descartadas ao sair. Para reservar uma visita, use **Agendar doação**, escolha unidade, dia e horário e confirme. Para demonstrar com o acesso padrão do desktop, escolha **Unidade Vitalis Centro**. A triagem completa e a decisão de aptidão continuam com a equipe do hemocentro.
 3. No desktop, o acesso fictício já vem preenchido: **`hemocentro@vitalis.demo` / `VitalisDemo2026!`**. Clique em **Entrar no hemocentro**. Essa credencial é pública e exclusiva do protótipo, criada por `db:seed`.
 4. A visão geral mostra as solicitações; abra **Agendamentos** para consultar ou cancelar. A atualização chega por conexão autenticada com a API, com consulta a cada 5 segundos como alternativa. Não há segundo login da agenda.
 5. No mobile, consulte **Meus agendamentos** na página inicial ou a aba **Agenda**. Cancelamentos feitos pela unidade também aparecem ali.
@@ -82,6 +82,8 @@ Em **Conta → Meus dados** é possível corrigir o nome. Em **Conta → Privaci
 Para publicar um aviso no aplicativo, entre no desktop, crie/revise um alerta e clique em **Publicar no aplicativo**. A unidade é determinada pela sessão; o aviso fica no PostgreSQL. E-mail e WhatsApp continuam simulados.
 
 As reservas anteriores salvas localmente não são importadas. O mobile usa a conta autenticada e as reservas do servidor. O desktop preserva sua agenda local anterior em uma seção recolhida. Não há cadastro público de hemocentros: as contas administrativas são preparadas no banco.
+
+O questionário usa oito perguntas básicas e uma pergunta adicional para algumas faixas de idade. Ele não libera a doação nem envia respostas ao hemocentro. As regras, fontes e limitações estão em [pré-triagem digital](docs/pre-triagem-digital.md).
 
 ## Banco e manutenção
 
@@ -107,11 +109,16 @@ npm run test:db
 # Interface completa e integração mobile → API → PostgreSQL → desktop
 npm run test:mobile:ui
 
+# Validação de agendamento: banco real e jornada visual com falhas de conexão
+npm run test:appointments
+
 # Regressão da interface anterior do administrador
 npm run test:ui --workspace @vitalis/desktop
 ```
 
 `test:db` e os dois testes gráficos precisam de `TEST_DATABASE_URL` apontando para um banco separado cujo nome contenha `test`. Prepare uma vez um banco `vitalis_test`, conforme [o guia do banco](database/README.md#testes-reais). Eles usam e removem esquemas temporários; não limpam a demonstração do usuário. Os testes gráficos escolhem uma porta livre para sua própria API e precisam de ambiente gráfico. A prévia mobile testada é web; execução em Android/iOS real e VoiceOver/TalkBack ainda precisam de validação.
+
+A [validação de agendamentos](docs/validacao-agendamentos.md) descreve os cenários cobertos, incluindo última vaga, resposta perdida após gravação, reinício da API, cancelamento pelos dois aplicativos e sessão expirada. Os testes gráficos restauram o build desktop com o endereço normal da API ao terminar, inclusive quando falham.
 
 Se os serviços Expo não estiverem acessíveis, `EXPO_OFFLINE=1 npm run validate` usa os metadados incluídos no SDK para a verificação de versões. Repita `npm run check:mobile` online para consultar as recomendações remotas.
 
@@ -133,6 +140,8 @@ O export mobile gera JavaScript/assets, não APK/IPA. O build desktop gera arqui
 | `apps/desktop/src/renderer/src/components/` | Elementos visuais e publicação autenticada de avisos |
 | `apps/desktop/tests/` | Regras locais e teste gráfico com perfil isolado |
 | `apps/mobile/App.tsx` | Cabeçalho, abas, áreas seguras e navegação protegida pela sessão |
+| `apps/mobile/src/screens/ScreeningScreen.tsx` | Questionário e orientação inicial, com respostas apenas na memória da tela |
+| `apps/mobile/src/data/screening.ts` | Perguntas e regras orientativas, sem API ou persistência |
 | `apps/mobile/src/SharedAgenda.tsx` | Sessão única, agenda, reserva, cancelamento e privacidade; dados em memória |
 | `apps/mobile/src/data/` | Exemplos locais e clientes HTTP; o armazenamento antigo não participa do fluxo autenticado |
 | `apps/mobile/src/screens/` | Telas baseadas no PDF da equipe |

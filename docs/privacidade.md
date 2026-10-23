@@ -25,7 +25,7 @@ A referência legal é a [LGPD consolidada](https://www.planalto.gov.br/ccivil_0
 
 A reserva em uma plataforma de doação pode revelar informações sensíveis pelo contexto. Omitir campos clínicos reduz a coleta, mas não elimina a necessidade de avaliar esse risco.
 
-O aplicativo solicita um horário para **pré-triagem presencial**. Não exige questionário de saúde digital e não decide aptidão. Cidade, preferências e tipo sanguíneo ilustrativo, quando escolhidos, ficam somente na memória da sessão do mobile e não são enviados ao cadastrar ou agendar.
+O aplicativo oferece uma **pré-triagem digital orientativa**, com poucas perguntas de saúde e preparação, além de um agendamento separado de visita para doação. Não decide aptidão. As respostas e o resultado ficam somente no componente do questionário e são descartados ao sair, refazer, recarregar ou encerrar a sessão. Não são enviados à API, registrados em auditoria, exportados na conta ou gravados no PostgreSQL/armazenamento do aparelho. O questionário não é uma autorização para reservar um horário. Cidade, preferências e tipo sanguíneo ilustrativo, quando escolhidos, ficam somente na memória da sessão do mobile e não são enviados ao cadastrar ou agendar.
 
 O acesso `hemocentro@vitalis.demo` / `VitalisDemo2026!` é uma credencial deliberadamente pública para demonstração, solicitada pela equipe. Qualquer pessoa que a conheça pode consultar a unidade fictícia. Esse acesso precisa ser substituído por contas individuais gerenciadas antes de qualquer piloto com pessoas reais.
 
@@ -57,4 +57,6 @@ A documentação serve como registro das escolhas técnicas. A confirmação das
 
 Os testes com PostgreSQL verificam isolamento por doador/unidade, recusa de publicação por doador, concorrência de vagas, duplicidade, cancelamento, persistência após reiniciar a aplicação, correção, exportação, exclusão e revogação. A API é exercitada também pelo usuário restrito do banco. Os testes de senha verificam salts diferentes, senha incorreta e hashes inválidos.
 
-O teste gráfico verifica cadastro, login único, botão de agendamento na página inicial, recebimento automático no desktop sem atualizar manualmente, cancelamento, novo login após recarregar e exclusão da conta. Também verifica correção/exportação sem credenciais ou nome autenticado no armazenamento local. Testes não demonstram conformidade integral nem substituem auditoria ou validação em aparelhos reais.
+O teste gráfico verifica o questionário e seus resultados, ausência de requisições de escrita durante a pré-triagem, ausência de respostas no armazenamento local, descarte ao sair, cadastro, login único, botão de agendamento na página inicial, recebimento automático no desktop sem atualizar manualmente, cancelamento, novo login após recarregar e exclusão da conta. Também verifica correção/exportação sem credenciais ou nome autenticado no armazenamento local. Testes não demonstram conformidade integral nem substituem auditoria ou validação em aparelhos reais.
+
+As fontes, critérios e limitações do questionário estão em [pre-triagem-digital.md](pre-triagem-digital.md). A extensão deste protótipo para uma triagem clínica real exigirá validação pela equipe de saúde e revisão específica de governança dos dados de saúde.

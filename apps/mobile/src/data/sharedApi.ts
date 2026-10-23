@@ -16,6 +16,8 @@ export type SharedSlot = {
 };
 export type SharedAppointment = {
   id: string;
+  slotId: string;
+  canCancel: boolean;
   date: string;
   time: string;
   unitId: string;
@@ -59,7 +61,11 @@ export async function sharedRequest<T>(
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new Error(
-      'Sem conexão. Confira a API e a rede. Se acabou de reservar, atualize a agenda antes de tentar novamente.',
+      method === 'POST' && path === '/v1/appointments'
+        ? 'Não foi possível confirmar o agendamento. Atualize a agenda para verificar antes de tentar novamente.'
+        : method === 'POST' && path.endsWith('/cancel')
+          ? 'Não foi possível confirmar o cancelamento. Atualize a agenda para verificar e tente novamente.'
+          : 'Sem conexão com o servidor. Confira a API e a rede e tente novamente.',
     );
   } finally {
     clearTimeout(timer);
