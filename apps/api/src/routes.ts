@@ -1,3 +1,5 @@
+import { pushRoutes } from './push.ts';
+import { stockRoutes } from './stock.ts';
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
@@ -187,6 +189,8 @@ export function protectedRoutes(pool?: Pool) {
     next();
   };
   router.use(authenticate);
+  stockRoutes(router, requirePool);
+  pushRoutes(router, requirePool);
   router.get('/appointments/events', (req, res) => {
     const actor = res.locals.actor as Actor;
     if (actor.role !== 'admin')
@@ -231,6 +235,9 @@ export function protectedRoutes(pool?: Pool) {
     });
   });
   router.post('/auth/logout', async (_req, res) => {
+    await requirePool().query('DELETE FROM push_subscriptions WHERE account_id=$1', [
+      res.locals.actor.id,
+    ]);
     await requirePool().query('DELETE FROM sessions WHERE token_hash=$1', [res.locals.tokenHash]);
     res.sendStatus(204);
   });
@@ -416,7 +423,19 @@ export function protectedRoutes(pool?: Pool) {
         [actor.id],
       )
     ).rows;
-    res.json({ exportedAt: new Date().toISOString(), user: actor, appointments, events });
+    const pushPreferences = (
+      await requirePool().query(
+        'SELECT city,blood_type AS "bloodType",own_type AS "ownType",other_types AS "otherTypes",consent_at AS "consentAt" FROM push_subscriptions WHERE account_id=$1',
+        [actor.id],
+      )
+    ).rows;
+    res.json({
+      exportedAt: new Date().toISOString(),
+      user: actor,
+      appointments,
+      events,
+      pushPreferences,
+    });
   });
   router.delete('/me', async (req, res) => {
     const actor = res.locals.actor as Actor;

@@ -1,3 +1,4 @@
+import { startPushWorker } from './push.ts';
 import { createApp } from './app.ts';
 import { createPool } from './db/pool.ts';
 import { createServer } from 'node:https';
@@ -53,10 +54,12 @@ const server = tls
 server.once('listening', () =>
   console.log(`Vitalis API iniciada em ${tls ? 'https' : 'http'}://${host}:${port}`),
 );
+const stopPushWorker = startPushWorker(pool);
 let closing = false;
 for (const signal of ['SIGINT', 'SIGTERM'] as const)
   process.on(signal, () => {
     if (closing) return;
     closing = true;
+    stopPushWorker();
     server.close(() => void pool.end());
   });

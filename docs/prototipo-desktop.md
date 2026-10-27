@@ -31,7 +31,7 @@ npm run start:desktop
 | Doadores | Busca, filtro sanguíneo, perfil, histórico, cadastro e edição de nomes, identificação fictícia, contato, cidade e canais autorizados. |
 | Doações | Lista e registro vinculado obrigatoriamente a um doador. O atendimento agendado na mesma data é marcado como concluído. O registro não acrescenta bolsas automaticamente: entrada de estoque é uma etapa separada. |
 | Agendamentos | Reservas do PostgreSQL, nome do usuário, dia/horário, unidade e cancelamento com confirmação. Atualização por evento autenticado e consulta a cada 5 segundos. Agenda local antiga recolhida separadamente. |
-| Alertas | Campanhas de exemplo, criação de rascunho, segmentação, prévia de mensagem, revisão e confirmação de envio simulado. |
+| Alertas | Avisos automáticos de escassez, gerados pela API a partir do estoque agregado sincronizado. Não há criação, revisão ou publicação manual. |
 | Configurações | Edição local dos dados da unidade, saída da sessão e restauração dos dados de exemplo com confirmação. |
 
 Os formulários da demonstração anterior usam dados locais; a nova agenda autenticada usa PostgreSQL. A ação Publicar no aplicativo compartilha somente avisos públicos pela API de demonstração, conforme o fluxo descrito abaixo. Não há conexão com unidades reais, envio de e-mail/WhatsApp ou avaliação clínica.
@@ -48,7 +48,7 @@ Os formulários da demonstração anterior usam dados locais; a nova agenda aute
 
 ## Simulação de comunicação e atendimento
 
-O público de um alerta é calculado a partir dos perfis fictícios que correspondem ao tipo sanguíneo, à cidade e a pelo menos um canal autorizado selecionado. A parte anterior a `·` do campo de região é usada como cidade. O raio em quilômetros é apenas descritivo; não há geolocalização ou cálculo de distâncias.
+O aplicativo filtra os avisos automáticos por cidade e tipo exato. Push usa as preferências autorizadas do aparelho, sem compatibilidade clínica. Veja [o fluxo automático](avisos-automaticos.md).
 
 O envio exige ao menos um destinatário e apenas altera o estado local da campanha. A pré-triagem mostra respostas fixas explicitamente fictícias para os perfis de exemplo com questionário respondido. As respostas não determinam aptidão.
 
@@ -67,7 +67,7 @@ npm run build --workspace @vitalis/desktop
 npm run test:ui --workspace @vitalis/desktop
 ```
 
-Há 11 testes dos modelos, usando `node:test`. O teste de interface abre o Electron com perfil temporário e verifica acesso, logo, estoque, filtros, entrada/saída, saldo insuficiente, cadastro/edição/perfil/triagem, doação vinculada, atendimento, alerta simulado, configurações, persistência, restauração e saída. Ele precisa de ambiente gráfico e `TEST_DATABASE_URL`; usa API em porta livre, esquema e perfil temporários, sem alterar a demonstração do usuário.
+Há 11 testes dos modelos, usando `node:test`. O teste de interface abre o Electron com perfil temporário e verifica acesso, logo, estoque, filtros, entrada/saída, saldo insuficiente, cadastro/edição/perfil/triagem, doação vinculada, atendimento, avisos automáticos, configurações, persistência, restauração e saída. Ele precisa de ambiente gráfico e `TEST_DATABASE_URL`; usa API em porta livre, esquema e perfil temporários, sem alterar a demonstração do usuário.
 
 Para salvar capturas durante esse teste no macOS/Linux:
 
@@ -77,6 +77,6 @@ VITALIS_TEST_SCREENSHOTS_DIR=/tmp/vitalis-capturas npm run test:ui --workspace @
 
 ## Compartilhar avisos com o mobile
 
-Após confirmar um envio simulado, a ação **Publicar no aplicativo** envia o conteúdo público para a API de demonstração em `127.0.0.1:3000`. Ela também está disponível ao abrir a prévia de um alerta já simulado. É necessário iniciar PostgreSQL e API e autenticar no login inicial do desktop; uma falha mantém a campanha local e permite tentar novamente. Não são enviados dados dos destinatários. O guia [prototipo-mobile.md](prototipo-mobile.md) explica a configuração do celular. E-mail e WhatsApp seguem simulados, e os avisos não são push em segundo plano.
+A sincronização do saldo gera os avisos automaticamente. Falhas ficam visíveis e são tentadas novamente; a equipe não escreve mensagens. As limitações de fonte local, limiares e ativação de push estão em [avisos-automaticos.md](avisos-automaticos.md).
 
 A pré-triagem digital do mobile é apenas orientativa e suas respostas não chegam ao desktop. A agenda recebe a reserva de visita para doação, sem respostas clínicas ou declaração de aptidão. A pré-triagem dos perfis administrativos antigos continua sendo uma simulação local, separada desse questionário.

@@ -17,6 +17,7 @@ export async function grantRuntimeRole(pool: Pool) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(70415832)');
     if (!(await client.query(`SELECT 1 FROM pg_roles WHERE rolname='vitalis_app'`)).rowCount) {
       // O format do PostgreSQL escapa o literal; a senha não aparece nos logs da aplicação.
       const sql = (
@@ -51,6 +52,8 @@ export async function grantRuntimeRole(pool: Pool) {
     await client.query(`GRANT SELECT,INSERT ON audit_events TO vitalis_app`);
     await client.query(`GRANT USAGE ON SEQUENCE audit_events_id_seq TO vitalis_app`);
     await client.query(`GRANT SELECT,INSERT,UPDATE ON public_alerts TO vitalis_app`);
+    await client.query('GRANT SELECT,INSERT,UPDATE ON stock_state,push_deliveries TO vitalis_app');
+    await client.query('GRANT SELECT,INSERT,UPDATE,DELETE ON push_subscriptions TO vitalis_app');
     // A API pode verificar o estado das migrações, mas não pode alterá-lo.
     await client.query(`GRANT SELECT ON schema_migrations TO vitalis_app`);
     if ((await client.query('SELECT current_schema() AS name')).rows[0].name === 'public') {

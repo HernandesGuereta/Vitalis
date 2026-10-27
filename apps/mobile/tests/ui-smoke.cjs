@@ -17,7 +17,10 @@ const donorPassword = 'fixture-mobile-donor-password';
 const adminPassword = 'fixture-desktop-admin-password';
 async function cleanup() {
   for (const window of BrowserWindow.getAllWindows()) window.destroy();
-  if (apiServer?.listening) await new Promise((resolve) => apiServer.close(resolve));
+  if (apiServer?.listening) {
+    apiServer.closeAllConnections();
+    await new Promise((resolve) => apiServer.close(resolve));
+  }
   if (webServer?.listening) await new Promise((resolve) => webServer.close(resolve));
   if (apiPool) await apiPool.end();
   if (dbPool) await dbPool.end();
@@ -153,7 +156,12 @@ app.whenReady().then(async () => {
       width: 390,
       height: 844,
       useContentSize: true,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        backgroundThrottling: false,
+      },
     });
     const allowedOrigins = new Set([
       `http://127.0.0.1:${webServer.address().port}`,
@@ -164,7 +172,10 @@ app.whenReady().then(async () => {
       { urls: ['http://*/*', 'https://*/*'] },
       (details, callback) => {
         if (new URL(details.url).port === process.env.VITALIS_UI_API_PORT)
-          apiRequests.push({ method: details.method, path: new URL(details.url).pathname });
+          apiRequests.push({
+            method: details.method,
+            path: new URL(details.url).pathname,
+          });
         callback({ cancel: !allowedOrigins.has(new URL(details.url).origin) });
       },
     );
@@ -295,7 +306,12 @@ app.whenReady().then(async () => {
     const desktop = new BrowserWindow({
       width: 1400,
       height: 940,
-      webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        backgroundThrottling: false,
+      },
     });
     const d = driver(desktop);
     await desktop.loadFile(join(root, 'desktop/out/renderer/index.html'));
@@ -366,11 +382,11 @@ app.whenReady().then(async () => {
     mobile.webContents.setZoomFactor(1.5);
     await delay(120);
     assert.ok(await m.evaluate('document.documentElement.scrollWidth<=innerWidth'));
-    assert.ok(await m.evaluate(`(() => {
+    await m.until(`(() => {
       const logo=document.querySelector('img[alt="Vitalis"]')?.getBoundingClientRect();
       const bell=document.querySelector('[aria-label^="Alertas,"]')?.getBoundingClientRect();
       return logo && bell && (logo.right<=bell.left || logo.bottom<=bell.top);
-    })()`));
+    })()`);
     await m.screenshot('18-texto-ampliado');
     mobile.webContents.setZoomFactor(1);
     await m.click('Conta');
@@ -394,15 +410,49 @@ app.whenReady().then(async () => {
     await m.click('Entrar');
     await m.until('document.body.innerText.includes("Olá, Lia.")');
     await d.click('Alertas', '.nav-item');
-    await d.click('Criar alerta');
-    await d.field('[name=title]', 'Aviso fictício para doadores');
-    await d.click('Revisar alerta');
-    await d.click('Confirmar envio simulado');
-    await d.click('Publicar no aplicativo');
-    await d.until('document.body.innerText.includes("Publicado no aplicativo.")');
+    await d.until('document.body.innerText.includes("Avisos automáticos de escassez")');
+    assert.equal(
+      await d.evaluate(
+        'Array.from(document.querySelectorAll("button")).some(b=>b.textContent.includes("Criar alerta"))',
+      ),
+      false,
+    );
+    const movement = async (kind, quantity) => {
+      await d.click('Estoque de sangue', '.nav-item');
+      await d.click('Registrar movimentação');
+      if (kind === 'saida') {
+        await d.evaluate('document.querySelector("input[value=saida]").click()');
+        await d.until(
+          'document.querySelector("input[name=location]")?.value==="Hospital de referência da região"',
+        );
+      }
+      await d.field('[name=quantity]', String(quantity));
+      await d.evaluate('document.querySelector("form").requestSubmit()');
+      await d.until('document.querySelector(".success-panel")!==null');
+      await d.until(
+        'document.querySelector("[data-testid=stock-sync]")?.textContent.includes("Estoque sincronizado")',
+      );
+    };
+    // O+ começa com 84 bolsas; a movimentação cruza 50% e depois 25% da meta.
+    await movement('saida', 34);
     await m.click('Alertas');
     await m.click('Atualizar avisos');
-    await m.until('document.body.innerText.includes("Aviso fictício para doadores")');
+    await m.until('document.body.innerText.includes("Estoque baixo de O+")');
+    await movement('saida', 25);
+    await m.click('Atualizar avisos');
+    await m.until('document.body.innerText.includes("Estoque crítico de O+")');
+    await m.screenshot('19-escassez-automatica');
+    await movement('entrada', 26);
+    await m.click('Atualizar avisos');
+    await m.until(
+      '!document.body.innerText.includes("Estoque crítico de O+") && !document.body.innerText.includes("Estoque baixo de O+")',
+    );
+    await m.click('Conta');
+    await m.click('Preferências de alertas', '[role="button"] [dir="auto"]');
+    await m.click('Ativar notificações no aparelho');
+    await m.until(
+      'document.body.innerText.includes("No navegador, acompanhe os avisos em Alertas.")',
+    );
     await m.click('Conta');
     await m.click('Privacidade', '[role="button"] [dir="auto"]');
     await m.field('input[aria-label="Confirmação de exclusão"]', 'EXCLUIR');
@@ -415,7 +465,7 @@ app.whenReady().then(async () => {
     );
     assert.deepEqual(errors, []);
     console.log(
-      'Persistência, retorno ao login após recarregar, publicação autenticada, privacidade e exclusão da conta verificados.',
+      'Persistência, retorno ao login após recarregar, avisos automáticos e indisponibilidade explícita de push no navegador, privacidade e exclusão da conta verificados.',
     );
     clearTimeout(timer);
     await cleanup();

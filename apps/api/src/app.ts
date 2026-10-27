@@ -1,4 +1,5 @@
 import express from 'express';
+import { publicAlertsSql } from './stock.ts';
 import type { ErrorRequestHandler } from 'express';
 import type { Pool } from 'pg';
 import { HttpError, protectedRoutes } from './routes.ts';
@@ -55,7 +56,9 @@ export function createApp(pool?: Pool) {
         'Reservas',
         'Eventos de acesso e alteração',
       ],
-      notCollected: ['CPF', 'Nascimento', 'Tipo sanguíneo do doador', 'Respostas de saúde'],
+      notCollected: ['CPF', 'Nascimento', 'Respostas de saúde'],
+      optionalPush:
+        'Com autorização: token do aparelho, cidade, tipo sanguíneo opcional e filtros. Desativar ou excluir a conta remove o cadastro push.',
       sessionMinutes: 30,
       retention: {
         accounts: 'Até a exclusão da conta fictícia.',
@@ -75,11 +78,7 @@ export function createApp(pool?: Pool) {
   );
   app.get('/demo/alerts', async (_req, res) => {
     const alerts = pool
-      ? (
-          await pool.query(
-            `SELECT p.id,p.title,p.message,p.blood_type AS "bloodType",p.region,u.name AS "unitName",'mobilizacao' AS level,p.published_at AS "publishedAt" FROM public_alerts p JOIN units u ON u.id=p.unit_id ORDER BY p.published_at DESC LIMIT 200`,
-          )
-        ).rows
+      ? (await pool.query(`${publicAlertsSql} ORDER BY p.published_at DESC LIMIT 200`)).rows
       : [];
     res.json({ alerts });
   });
@@ -87,37 +86,7 @@ export function createApp(pool?: Pool) {
     const actor = res.locals.actor;
     if (actor.role !== 'admin')
       throw new HttpError(403, 'Somente a equipe autorizada pode publicar avisos.');
-    const record = req.body;
-    if (!record || typeof record !== 'object' || Array.isArray(record))
-      throw new HttpError(400, 'Aviso inválido.');
-    for (const [key, limit] of Object.entries({
-      id: 100,
-      title: 120,
-      message: 1000,
-      bloodType: 3,
-      region: 100,
-    })) {
-      if (typeof record[key] !== 'string' || !record[key].trim() || record[key].length > limit)
-        throw new HttpError(400, `Campo inválido: ${key}.`);
-    }
-    if (!['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(record.bloodType))
-      throw new HttpError(400, 'Tipo sanguíneo inválido.');
-    // Somente conteúdo público. A unidade vem da sessão, nunca do corpo enviado.
-    const result = await pool!.query(
-      `INSERT INTO public_alerts(id,unit_id,title,message,blood_type,region) VALUES($1,$2,$3,$4,$5,$6)
-      ON CONFLICT(id) DO UPDATE SET title=excluded.title,message=excluded.message,blood_type=excluded.blood_type,region=excluded.region
-      WHERE public_alerts.unit_id=excluded.unit_id RETURNING id`,
-      [
-        record.id.trim(),
-        actor.unitId,
-        record.title.trim(),
-        record.message.trim(),
-        record.bloodType,
-        record.region.trim(),
-      ],
-    );
-    if (!result.rowCount) throw new HttpError(404, 'Aviso não encontrado nesta unidade.');
-    res.json({ id: record.id.trim() });
+    throw new HttpError(410, 'Os avisos de escassez são gerados automaticamente pelo estoque.');
   });
   app.use('/v1', router);
   const handleError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {

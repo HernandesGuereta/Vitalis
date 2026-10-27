@@ -234,10 +234,10 @@ test('PostgreSQL real: persistência, concorrência, autorização, cancelamento
       recipientIds: ['NÃO ARMAZENAR'],
     };
     assert.equal((await request('/demo/alerts', ana, 'POST', publish)).status, 403);
-    assert.equal((await request('/demo/alerts', admin, 'POST', publish)).status, 200);
-    assert.equal((await request('/demo/alerts', jardim, 'POST', publish)).status, 404);
+    assert.equal((await request('/demo/alerts', admin, 'POST', publish)).status, 410);
+    assert.equal((await request('/demo/alerts', jardim, 'POST', publish)).status, 410);
     const alerts = (await (await request('/demo/alerts')).json()).alerts;
-    assert.equal(alerts.length, 1);
+    assert.equal(alerts.length, 0);
     assert.equal(JSON.stringify(alerts).includes('NÃO ARMAZENAR'), false);
     // Uma nova instância de aplicação encontra o mesmo estado no PostgreSQL.
     await new Promise<void>((resolve, reject) => server!.close((e) => (e ? reject(e) : resolve())));

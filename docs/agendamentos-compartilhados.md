@@ -61,11 +61,11 @@ O seed disponibiliza os sete dias seguintes, às 09:00, 09:30 e 10:00. Reexecut�
 
 ## Avisos públicos
 
-Para **Publicar no aplicativo**, o administrador precisa estar autenticado no desktop. A API determina a unidade pela sessão, valida o papel e salva o aviso no PostgreSQL. Não há publicação anônima. O mobile continua consultando o conteúdo público de avisos sem enviar dados de destinatários.
+Os avisos de escassez são gerados automaticamente pela API após sincronização do estoque pelo administrador da unidade. O hemocentro não cria nem publica mensagens. Consulte [avisos-automaticos.md](avisos-automaticos.md).
 
 ## Celular físico e HTTPS
 
-Use `npm run dev:mobile` e o Expo Go compatível com SDK 57. O endereço no celular deve ser o IP ou domínio do computador/servidor, não `localhost`. Antes de entrar ou criar a conta, abra **Configurar conexão** e informe o endereço da API. Também é possível definir `EXPO_PUBLIC_API_URL` ao iniciar o Expo; essa variável contém somente um endereço público, nunca credenciais.
+Use `npm run dev:mobile` e o Expo Go compatível com SDK 58. O endereço no celular deve ser o IP ou domínio do computador/servidor, não `localhost`. Antes de entrar ou criar a conta, abra **Configurar conexão** e informe o endereço da API. Também é possível definir `EXPO_PUBLIC_API_URL` ao iniciar o Expo; essa variável contém somente um endereço público, nunca credenciais.
 
 A API aceita HTTP sem configuração adicional apenas em loopback, para demonstração no próprio computador. Para a rede local, a configuração recomendada é HTTPS, usando `TLS_CERT_FILE` e `TLS_KEY_FILE` com certificado confiável pelo celular. Configure `VITE_API_URL` no `.env` para o endereço HTTPS do desktop e reinicie o desenvolvimento ou refaça o build. A configuração do Electron atualiza a política de conexão para essa origem exata. Nunca desabilite a verificação de certificados.
 
@@ -104,7 +104,7 @@ Consulte [privacidade.md](privacidade.md) para os controles aplicados e as pend�
 | `GET /v1/me/export` | Próprios dados |
 | `DELETE /v1/me` | Conta de doador, confirmação explícita |
 | `GET /demo/alerts` | Conteúdo público |
-| `POST /demo/alerts` | Administrador da unidade autenticado |
+| `POST /demo/alerts` | Descontinuado; avisos agora são automáticos (410 para administrador) |
 
 ## Verificar
 

@@ -16,7 +16,7 @@ import {
   s,
 } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { exampleAlerts, normalize, units, visibleAlerts } from '../data/model';
+import { normalize, units, visibleAlerts } from '../data/model';
 import type { MobileAlert } from '../data/model';
 import type { Screen } from '../navigation';
 
@@ -58,11 +58,7 @@ export function MainScreen({ screen }: { screen: Screen }) {
   const shared = useSharedAgenda();
   const { data, go, root } = app;
   const [onlyMine, setOnlyMine] = useState(false);
-  const all = visibleAlerts(
-    [...data.remoteAlerts, ...exampleAlerts],
-    data.profile,
-    data.preferences,
-  );
+  const all = visibleAlerts(data.remoteAlerts, data.profile, data.preferences);
   const alerts = onlyMine ? all.filter((a) => a.bloodType === data.profile.bloodType) : all;
   const unit = units.find((u) => u.id === app.unitId) ?? units[0]!;
   if (screen === 'home')
@@ -140,8 +136,8 @@ export function MainScreen({ screen }: { screen: Screen }) {
           />
         </View>
         <Notice warning>
-          Os avisos são demonstrativos. Mobilizações publicadas no desktop aparecem aqui
-          automaticamente enquanto o aplicativo estiver conectado.
+          Os avisos usam estoques fictícios. O sistema detecta a escassez e atualiza esta lista
+          enquanto o aplicativo está conectado.
         </Notice>
         <Button
           secondary
@@ -197,7 +193,7 @@ export function MainScreen({ screen }: { screen: Screen }) {
           <Body muted>
             {alert.id.startsWith('exemplo-')
               ? 'Atualização ilustrativa'
-              : 'Publicado pelo desktop · demonstração'}
+              : 'Gerado automaticamente pelo estoque · demonstração'}
           </Body>
         </Card>
         <Notice>

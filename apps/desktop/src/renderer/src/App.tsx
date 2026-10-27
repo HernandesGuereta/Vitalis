@@ -20,10 +20,9 @@ import {
   normalize,
   registerDonation,
   restoreOffice,
-  saveCampaign,
   saveDonor,
 } from './prototype/office';
-import type { Campaign, OfficeData, UnitSettings } from './prototype/office';
+import type { OfficeData, UnitSettings } from './prototype/office';
 import {
   AgendaView,
   DonationForm,
@@ -33,11 +32,11 @@ import {
   ProfileView,
   ScreeningView,
 } from './views/DonorViews';
-import { CampaignForm, CampaignReview, CampaignsView, emptyCampaign } from './views/CampaignViews';
+import { AutomaticAlertsView } from './views/CampaignViews';
+import { useAutomaticAlerts } from './prototype/useAutomaticAlerts';
 import { MovementView } from './views/MovementView';
 import { SharedAgendaView, AppointmentSummary } from './views/SharedAgendaView';
 import { getAgendaSession, loginAgenda, logoutAgenda } from './prototype/sharedApi';
-import { MobilePublication } from './components/MobilePublication';
 
 type View =
   | 'overview'
@@ -53,9 +52,6 @@ type View =
   | 'appointments'
   | 'screening'
   | 'alerts'
-  | 'alert-form'
-  | 'alert-review'
-  | 'alert-done'
   | 'settings';
 const navigation: Array<{ view: View; title: string; icon: IconName }> = [
   { view: 'overview', title: 'Visão geral', icon: 'grid' },
@@ -98,12 +94,6 @@ const titles: Record<View, [string, string]> = {
     'Respostas de apoio à preparação do atendimento presencial.',
   ],
   alerts: ['Comunicação que mobiliza.', 'Acompanhe os alertas de escassez da unidade.'],
-  'alert-form': [
-    'Preparar alerta de escassez',
-    'Transforme a necessidade da unidade em uma comunicação direcionada.',
-  ],
-  'alert-review': ['Confira antes de mobilizar.', 'Revise o público e o conteúdo da comunicação.'],
-  'alert-done': ['Uma conexão iniciada.', 'O fluxo de comunicação foi concluído no protótipo.'],
   settings: ['Configurações da unidade', 'Dados institucionais, conta e preferências da operação.'],
 };
 const statusNames: Record<StockStatus, string> = {
@@ -111,7 +101,11 @@ const statusNames: Record<StockStatus, string> = {
   baixo: 'Baixo',
   critico: 'Crítico',
 };
-const statusTone = { adequado: 'good', baixo: 'low', critico: 'critical' } as const;
+const statusTone = {
+  adequado: 'good',
+  baixo: 'low',
+  critico: 'critical',
+} as const;
 const stockKey = 'vitalis.desktop.demo.v1';
 const officeKey = 'vitalis.desktop.office.v1';
 const accountInitials = () =>
@@ -233,7 +227,12 @@ function MovementTable({
   compact?: boolean;
 }) {
   return rows.length ? (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
+    <div
+      className="table-scroll"
+      tabIndex={0}
+      role="region"
+      aria-label="Tabela de registros, role para ver todas as colunas"
+    >
       <table>
         <caption className="sr-only">Histórico de movimentações de exemplo</caption>
         <thead>
@@ -250,10 +249,16 @@ function MovementTable({
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              <td>MOV-{String(261 + all.findIndex((m) => m.id === row.id)).padStart(4, '0')}</td>
+              <td>
+                MOV-
+                {String(261 + all.findIndex((m) => m.id === row.id)).padStart(4, '0')}
+              </td>
               <td>
                 {new Date(row.createdAt)
-                  .toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                  .toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'short',
+                  })
                   .replace('.', '')}{' '}
                 ·{' '}
                 {new Date(row.createdAt).toLocaleTimeString('pt-BR', {
@@ -400,7 +405,6 @@ export default function App() {
   const [movementType, setMovementType] = useState<BloodType>('O+');
   const [movementKind, setMovementKind] = useState<MovementKind>('entrada');
   const [lastMovement, setLastMovement] = useState<Movement | null>(null);
-  const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
@@ -448,10 +452,6 @@ export default function App() {
     setMovementKind(kind);
     navigate('movement-form');
   }
-  function newCampaign(type: BloodType = 'O-') {
-    setCampaign(emptyCampaign(type, office.settings.region));
-    navigate('alert-form');
-  }
   function enter() {
     setSessionMessage('');
     setLoggedIn(true);
@@ -476,6 +476,7 @@ export default function App() {
     if (loggedIn) document.querySelector<HTMLElement>('.page-heading h1')?.focus();
   }, [view, loggedIn]);
   const stock = getStock(data);
+  const automatic = useAutomaticAlerts(loggedIn, stock);
   const total = stock.reduce((sum, item) => sum + item.quantity, 0);
   const critical = stock.filter((item) => item.status === 'critico');
   const low = stock.filter((item) => item.status === 'baixo');
@@ -532,12 +533,6 @@ export default function App() {
         }}
       >
         Registrar doação
-      </button>
-    );
-  if (view === 'alerts')
-    action = (
-      <button className="button primary" onClick={() => newCampaign()}>
-        Criar alerta
       </button>
     );
   const bloodSelect = (
@@ -652,6 +647,28 @@ export default function App() {
             </div>
           )}
 
+          <div className="section-gap stock-sync" data-testid="stock-sync">
+            {automatic.error ? (
+              <>
+                <FormError
+                  message={`Estoque salvo neste computador, mas os avisos automáticos ainda não foram sincronizados. ${automatic.error}`}
+                />
+                <button
+                  className="button secondary"
+                  disabled={automatic.busy}
+                  onClick={automatic.retry}
+                >
+                  Tentar sincronizar novamente
+                </button>
+              </>
+            ) : (
+              <Notice>
+                {automatic.synced
+                  ? 'Estoque sincronizado. Avisos de escassez gerados automaticamente.'
+                  : 'Sincronizando estoque e verificando escassez…'}
+              </Notice>
+            )}
+          </div>
           {view === 'overview' && (
             <>
               <AppointmentSummary onOpen={() => navigate('appointments')} />
@@ -686,9 +703,12 @@ export default function App() {
                       {stock.find((s) => s.bloodType === focusType)!.quantity} bolsas disponíveis
                     </span>
                   </div>
-                  <p>Mobilize os doadores da região com um alerta direcionado.</p>
-                  <button className="button primary" onClick={() => newCampaign(focusType)}>
-                    Preparar alerta
+                  <p>
+                    Os avisos de escassez são gerados automaticamente a partir do estoque
+                    sincronizado.
+                  </p>
+                  <button className="button primary" onClick={() => navigate('alerts')}>
+                    Ver avisos automáticos
                   </button>
                 </section>
                 <section className="appointment-card">
@@ -766,7 +786,12 @@ export default function App() {
                   </select>
                 </div>
                 {filteredStock.length ? (
-                  <div className="table-scroll" tabIndex={0} role="region" aria-label="Tabela de registros, role para ver todas as colunas">
+                  <div
+                    className="table-scroll"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Tabela de registros, role para ver todas as colunas"
+                  >
                     <table>
                       <thead>
                         <tr>
@@ -944,59 +969,7 @@ export default function App() {
             />
           )}
           {view === 'alerts' && (
-            <CampaignsView
-              data={office}
-              onOpen={(value) => {
-                setCampaign(value);
-                navigate('alert-review');
-              }}
-            />
-          )}
-          {view === 'alert-form' && campaign && (
-            <CampaignForm
-              key={campaign.id}
-              data={office}
-              initial={campaign}
-              onCancel={() => navigate('alerts')}
-              onReview={(value) => {
-                const next = saveCampaign(office, { ...value, status: 'draft' });
-                setOffice(next);
-                setCampaign(next.campaigns.find((c) => c.id === value.id)!);
-                navigate('alert-review');
-              }}
-            />
-          )}
-          {view === 'alert-review' && campaign && (
-            <CampaignReview
-              data={office}
-              campaign={campaign}
-              onEdit={() => navigate('alert-form')}
-              onBack={() => navigate('alerts')}
-              onConfirm={() => {
-                const next = saveCampaign(office, { ...campaign, status: 'sent' });
-                setOffice(next);
-                setCampaign(next.campaigns.find((c) => c.id === campaign.id)!);
-                navigate('alert-done');
-              }}
-            />
-          )}
-          {view === 'alert-done' && campaign && (
-            <Success
-              title="Alerta preparado para mobilizar."
-              description="Envio simulado concluído."
-              detail={
-                <>
-                  {campaign.bloodType} / {campaign.recipientIds.length} destinatários
-                  <br />
-                  {campaign.channels.join(' e ')} / {campaign.region}
-                </>
-              }
-            >
-              <MobilePublication campaign={campaign} settings={office.settings} />
-              <button className="button primary" onClick={() => navigate('alerts')}>
-                Voltar aos alertas
-              </button>
-            </Success>
+            <AutomaticAlertsView alerts={automatic.alerts} synced={automatic.synced} />
           )}
           {view === 'settings' && (
             <Settings
