@@ -11,7 +11,7 @@ export async function cleanup(pool: ReturnType<typeof createPool>) {
       `DELETE FROM appointments WHERE service_date < (now() AT TIME ZONE 'America/Sao_Paulo')::date - 30`,
     );
     await client.query(`DELETE FROM audit_events WHERE created_at < now() - interval '30 days'`);
-    await client.query(`DELETE FROM public_alerts WHERE published_at < now() - interval '30 days'`);
+    await client.query(`DELETE FROM public_alerts WHERE NOT active AND published_at < now() - interval '30 days'`);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

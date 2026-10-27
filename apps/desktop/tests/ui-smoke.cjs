@@ -152,18 +152,18 @@ app.on('web-contents-created', (_event, contents) => {
 
       await click('Alertas', '.nav-item');
       await screenshot('16-alertas');
-      await click('Criar alerta');
-      assert.equal(await evaluate('document.querySelector(".audience-number").textContent'), '1');
-      await field('[name="title"]', 'Campanha fictícia O-');
-      await screenshot('17-preparar-alerta');
-      await submit();
-      await until('document.querySelector(".message-preview") !== null');
-      await screenshot('18-revisar-alerta');
-      await click('Confirmar envio simulado');
-      await until('document.querySelector(".success-panel") !== null');
-      await screenshot('19-alerta-concluido');
-      await click('Voltar aos alertas');
-      assert.equal(await evaluate('document.querySelectorAll("tbody tr").length'), 4);
+      await until('document.body.innerText.includes("Avisos automáticos de escassez")');
+      await until(
+        'document.querySelector("[data-testid=stock-sync]")?.textContent.includes("Estoque sincronizado")',
+      );
+      assert.equal(
+        await evaluate(
+          'Array.from(document.querySelectorAll("button")).some(b=>b.textContent.includes("Criar alerta"))',
+        ),
+        false,
+      );
+      assert.ok(await evaluate('document.querySelectorAll(".automatic-alerts article").length>0'));
+      await screenshot('17-avisos-automaticos');
       await click('Configurações', '.nav-item');
       await screenshot('20-configuracoes');
       await field('[name="name"]', 'Vitalis Centro Demo');
@@ -184,7 +184,7 @@ app.on('web-contents-created', (_event, contents) => {
       );
       assert.equal(await evaluate('JSON.stringify(localStorage).includes("vitalis-demo")'), false);
       console.log(
-        'Alertas simulados, preferências de contato, configurações e persistência verificados.',
+        'Avisos automáticos, preferências de contato, configurações e persistência verificados.',
       );
 
       await click('Configurações', '.nav-item');
@@ -209,7 +209,10 @@ app.on('web-contents-created', (_event, contents) => {
       BrowserWindow.fromWebContents(contents).setContentSize(640, 740);
       await click('Movimentações', '.nav-item');
       await delay(100);
-      assert.equal(await evaluate('document.activeElement === document.querySelector(".page-heading h1")'), true);
+      assert.equal(
+        await evaluate('document.activeElement === document.querySelector(".page-heading h1")'),
+        true,
+      );
       assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
       assert.equal(await evaluate('document.querySelector(".table-scroll").tabIndex'), 0);
       contents.setZoomFactor(1.5);

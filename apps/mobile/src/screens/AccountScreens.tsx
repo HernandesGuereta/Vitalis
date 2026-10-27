@@ -1,3 +1,4 @@
+import { enablePush, syncPushPreferences } from '../data/pushService';
 import { useEffect, useState } from 'react';
 import { useSharedAgenda } from '../SharedAgenda';
 import { ApiError, sharedRequest } from '../data/sharedApi';
@@ -168,7 +169,10 @@ export function AuthScreen({ screen }: { screen: Screen }) {
         <Link title="Já tenho uma conta" onPress={() => go('login')} />
       ) : (
         <>
-          <Link title="Recuperar acesso · indisponível no protótipo" onPress={() => go('recover')} />
+          <Link
+            title="Recuperar acesso · indisponível no protótipo"
+            onPress={() => go('recover')}
+          />
           <View style={[s.divider, { gap: 12 }]}>
             <Body muted>Ainda não tem uma conta?</Body>
             <Button secondary title="Criar minha conta" onPress={() => go('signup')} />
@@ -207,6 +211,7 @@ export function AccountScreen({ screen }: { screen: Screen }) {
   const [profile, setProfile] = useState(data.profile);
   const [prefs, setPrefs] = useState(data.preferences);
   const [error, setError] = useState('');
+  const [pushMessage, setPushMessage] = useState('');
   if (screen === 'profile')
     return (
       <>
@@ -247,13 +252,12 @@ export function AccountScreen({ screen }: { screen: Screen }) {
               setBusy(true);
               try {
                 const valid = validateProfile(profile);
-                const result = await sharedRequest<{ user: typeof shared.session.user }>(
-                  shared.session.url,
-                  '/v1/me',
-                  shared.session.token,
-                  'PATCH',
-                  { name: valid.name },
-                );
+                const result = await sharedRequest<{
+                  user: typeof shared.session.user;
+                }>(shared.session.url, '/v1/me', shared.session.token, 'PATCH', {
+                  name: valid.name,
+                });
+                await syncPushPreferences(shared.session, valid, data.preferences);
                 shared.setSession({ ...shared.session, user: result.user });
                 setData((d) => ({ ...d, profile: valid }));
                 go('saved');
@@ -312,15 +316,94 @@ export function AccountScreen({ screen }: { screen: Screen }) {
           </View>
         ))}
         <Notice>
-          Os filtros valem para avisos dentro do app. Push, e-mail e WhatsApp ainda não estão
-          disponíveis.
+          Os avisos de escassez são gerados automaticamente. E-mail e WhatsApp não estão
+          disponíveis. Push requer build próprio, credenciais e sua autorização.
         </Notice>
+        <Card>
+          <Text style={s.cardTitle}>Receber com o app fechado</Text>
+          <Body>
+            Ao ativar, seu aparelho, cidade e tipo sanguíneo informado serão usados para selecionar
+            os avisos. A notificação na tela bloqueada não mostra seu tipo. Você pode desativar
+            quando quiser.
+          </Body>
+          <ErrorText message={error} />
+          {pushMessage && <Notice>{pushMessage}</Notice>}
+          <Button
+            title="Ativar notificações no aparelho"
+            busy={busy}
+            onPress={() =>
+              void (async () => {
+                if (!shared.session || busy) return;
+                setBusy(true);
+                setError('');
+                setPushMessage('');
+                try {
+                  const state = await enablePush(shared.session, data.profile, prefs);
+                  setData((d) => ({ ...d, preferences: prefs }));
+                  setPushMessage(
+                    state.deliveryEnabled
+                      ? 'Aparelho registrado. O recebimento depende das permissões do sistema e da conexão.'
+                      : 'Aparelho registrado, mas o envio push ainda não foi ativado no servidor. Os avisos continuam disponíveis dentro do app.',
+                  );
+                } catch (e) {
+                  if (e instanceof ApiError && e.status === 401)
+                    shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
+                  setError(e instanceof Error ? e.message : 'Não foi possível ativar.');
+                } finally {
+                  setBusy(false);
+                }
+              })()
+            }
+          />
+          <Button
+            secondary
+            title="Desativar notificações da conta"
+            busy={busy}
+            onPress={() =>
+              void (async () => {
+                if (!shared.session || busy) return;
+                setBusy(true);
+                setError('');
+                try {
+                  await sharedRequest(
+                    shared.session.url,
+                    '/v1/push/subscriptions',
+                    shared.session.token,
+                    'DELETE',
+                  );
+                  setPushMessage('Notificações desativadas para esta conta em todos os aparelhos.');
+                } catch (e) {
+                  if (e instanceof ApiError && e.status === 401)
+                    shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
+                  setError(e instanceof Error ? e.message : 'Não foi possível desativar.');
+                } finally {
+                  setBusy(false);
+                }
+              })()
+            }
+          />
+        </Card>
         <Button
           title="Salvar preferências"
-          onPress={() => {
-            setData((d) => ({ ...d, preferences: prefs }));
-            go('saved');
-          }}
+          busy={busy}
+          onPress={() =>
+            void (async () => {
+              if (busy || !shared.session) return;
+              setBusy(true);
+              setError('');
+              try {
+                await syncPushPreferences(shared.session, data.profile, prefs);
+                setData((d) => ({ ...d, preferences: prefs }));
+                go('saved');
+              } catch (e) {
+                if (e instanceof ApiError && e.status === 401)
+                  shared.signOut('Sua sessão expirou. Entre novamente para continuar.');
+                setError(e instanceof Error ? e.message : 'Não foi possível salvar.');
+              } finally {
+                setBusy(false);
+              }
+            })()
+          }
         />
       </>
     );
@@ -330,7 +413,7 @@ export function AccountScreen({ screen }: { screen: Screen }) {
         <View style={{ paddingVertical: 24 }}>
           <Icon name="check" size={64} color={colors.accent} />
         </View>
-        <Title subtitle="Suas alterações foram aplicadas. Seu nome é salvo na conta; as preferências locais valem para esta sessão.">
+        <Title subtitle="Suas alterações foram aplicadas. O nome fica na conta; as preferências de push também são atualizadas quando você autoriza notificações.">
           Tudo atualizado.
         </Title>
         <Button title="Voltar à minha conta" onPress={() => root('account')} />

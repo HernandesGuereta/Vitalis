@@ -8,7 +8,7 @@ A referência legal é a [LGPD consolidada](https://www.planalto.gov.br/ccivil_0
 
 | Tema | Controle aplicado |
 | --- | --- |
-| Finalidade e minimização | Conta fictícia e reserva de horário. Não foram criadas colunas de CPF, nascimento, tipo sanguíneo do doador ou respostas de saúde. |
+| Finalidade e minimização | Conta fictícia e reserva de horário. Não são coletados CPF, nascimento nem respostas de saúde. Push é opcional e mantém cidade, tipo sanguíneo informado e filtros somente após ativação explícita. |
 | Autenticação | Um login por aplicativo. Cadastro público somente de doador, com nome, e-mail e senha; administradores preparados pelo seed. Resposta genérica para credenciais incorretas, limite de tentativas e sessões de até 30 minutos. |
 | Separação de papéis no cadastro | O corpo da requisição aceita somente nome, e-mail e senha. O banco define o papel `donor`; a credencial da API não pode inserir `role` ou `unit_id`. |
 | Senhas | scrypt com salt aleatório por conta, N=32768, r=8, p=3, saída de 64 bytes; comparação com tempo constante. O desenho segue uma configuração publicada pela [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). |
@@ -17,7 +17,7 @@ A referência legal é a [LGPD consolidada](https://www.planalto.gov.br/ccivil_0
 | Autorização | Identidade e unidade vêm da sessão. O doador consulta somente suas reservas; o administrador consulta e cancela somente reservas da própria unidade. Não é aceito um doador arbitrário no corpo da criação. |
 | Banco | API com usuário sem superusuário, criação de banco ou criação de papel. Migrações e seed usam outra credencial. Consultas parametrizadas e restrições no banco. |
 | Integridade da agenda | Transação, bloqueio de doador/horário, controle de capacidade, chave de repetição e unicidade por doador/dia. |
-| Comunicação | Avisos publicados exigem administrador autenticado. A unidade é determinada pelo servidor. Apenas conteúdo público é retornado no feed; destinatários não são armazenados nele. |
+| Comunicação | Avisos de escassez são gerados automaticamente. Sincronizar o saldo exige administrador autenticado da própria unidade. Apenas conteúdo público é retornado no feed; destinatários não são armazenados nele. |
 | Exposição | Respostas sem cache; erros genéricos sem SQL, stack ou credenciais; origens web limitadas e sem cookies de sessão. CORS complementa, mas não substitui, autorização. |
 | Auditoria | Identificador do ator, ação e instante para cadastro, login, criação e cancelamento. Não grava senha, token bruto, IP, respostas clínicas ou corpo das requisições. IDs vinculáveis continuam sendo dados pessoais, não anonimização. |
 | Direitos no protótipo | Acesso aos próprios dados, correção de nome, exportação e exclusão da conta de teste. Não há promessa de portabilidade regulatória completa. |
@@ -25,7 +25,7 @@ A referência legal é a [LGPD consolidada](https://www.planalto.gov.br/ccivil_0
 
 A reserva em uma plataforma de doação pode revelar informações sensíveis pelo contexto. Omitir campos clínicos reduz a coleta, mas não elimina a necessidade de avaliar esse risco.
 
-O aplicativo oferece uma **pré-triagem digital orientativa**, com poucas perguntas de saúde e preparação, além de um agendamento separado de visita para doação. Não decide aptidão. As respostas e o resultado ficam somente no componente do questionário e são descartados ao sair, refazer, recarregar ou encerrar a sessão. Não são enviados à API, registrados em auditoria, exportados na conta ou gravados no PostgreSQL/armazenamento do aparelho. O questionário não é uma autorização para reservar um horário. Cidade, preferências e tipo sanguíneo ilustrativo, quando escolhidos, ficam somente na memória da sessão do mobile e não são enviados ao cadastrar ou agendar.
+O aplicativo oferece uma **pré-triagem digital orientativa**, com poucas perguntas de saúde e preparação, além de um agendamento separado de visita para doação. Não decide aptidão. As respostas e o resultado ficam somente no componente do questionário e são descartados ao sair, refazer, recarregar ou encerrar a sessão. Não são enviados à API, registrados em auditoria, exportados na conta ou gravados no PostgreSQL/armazenamento do aparelho. O questionário não é uma autorização para reservar um horário. Cidade, preferências e tipo sanguíneo ilustrativo, quando escolhidos, ficam na memória da sessão e não são enviados ao cadastrar ou agendar. Ao ativar push, cidade, tipo opcional e filtros passam a ser armazenados para entrega, conforme a seção abaixo.
 
 O acesso `hemocentro@vitalis.demo` / `VitalisDemo2026!` é uma credencial deliberadamente pública para demonstração, solicitada pela equipe. Qualquer pessoa que a conheça pode consultar a unidade fictícia. Esse acesso precisa ser substituído por contas individuais gerenciadas antes de qualquer piloto com pessoas reais.
 
@@ -41,7 +41,7 @@ HTTP de desenvolvimento é aceito em loopback. A exposição HTTP à rede requer
 
 A conta de teste permanece até a exclusão. Reservas com data de atendimento passada há mais de 30 dias e eventos/avisos com mais de 30 dias são removidos por `npm run db:cleanup`. Sessões perdem validade aos 30 minutos; seus registros expirados são removidos em logins seguintes ou pela limpeza. Essa política é uma convenção do protótipo, não um prazo legal para prontuários ou dados de hemoterapia.
 
-A limpeza é manual; uma implantação contínua precisa agendá-la e monitorá-la. A exclusão da conta de doador remove imediatamente suas reservas e sessões do banco ativo. Os eventos anteriores ficam sem vínculo com a conta até a limpeza. Não existe cópia de agenda autenticada persistida pelos clientes.
+A limpeza é manual; uma implantação contínua precisa agendá-la e monitorá-la. A exclusão da conta de doador remove imediatamente reservas, sessões, cadastros push e entregas associadas do banco ativo. Os eventos anteriores ficam sem vínculo com a conta até a limpeza. Não existe cópia de agenda autenticada persistida pelos clientes.
 
 Os exemplos administrativos antigos continuam locais e identificados como demonstração. Eles não foram migrados para a base compartilhada. Podem conter campos fictícios de saúde; não devem receber dados reais. O mobile deixou de carregar/gravar o armazenamento antigo de perfil e visitas; instalações anteriores podem ainda ter essa chave antiga no dispositivo. Nenhum mecanismo de eliminação de backups foi implementado, porque ainda não há rotina de backup configurada. O seed pode recriar contas fictícias apagadas quando for reexecutado.
 
@@ -60,3 +60,9 @@ Os testes com PostgreSQL verificam isolamento por doador/unidade, recusa de publ
 O teste gráfico verifica o questionário e seus resultados, ausência de requisições de escrita durante a pré-triagem, ausência de respostas no armazenamento local, descarte ao sair, cadastro, login único, botão de agendamento na página inicial, recebimento automático no desktop sem atualizar manualmente, cancelamento, novo login após recarregar e exclusão da conta. Também verifica correção/exportação sem credenciais ou nome autenticado no armazenamento local. Testes não demonstram conformidade integral nem substituem auditoria ou validação em aparelhos reais.
 
 As fontes, critérios e limitações do questionário estão em [pre-triagem-digital.md](pre-triagem-digital.md). A extensão deste protótipo para uma triagem clínica real exigirá validação pela equipe de saúde e revisão específica de governança dos dados de saúde.
+
+## Notificações push opcionais
+
+Ao ativar, a pessoa autoriza o registro do token do aparelho, cidade, tipo opcional e filtros no servidor para a seleção das mensagens. Desativar ou sair voluntariamente revoga os aparelhos da conta. Dados exportados incluem preferências e data de autorização, sem o token. Essas informações não são necessárias para cadastrar ou agendar. Nenhuma resposta da pré-triagem é transmitida.
+
+O serviço Expo e os provedores APNs/FCM participam da entrega. A mensagem na tela bloqueada não expõe o tipo sanguíneo; a API nunca coloca o token no feed público, nos erros ou nos logs. O banco usa papel restrito. Inscrições permanecem até revogação, saída ou exclusão da conta; isso deve ser reavaliado antes de um piloto real. A ativação técnica não representa validação da base legal ou conformidade integral com a LGPD. O fluxo, as limitações e as credenciais ainda pendentes estão em [avisos-automaticos.md](avisos-automaticos.md).

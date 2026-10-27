@@ -1,3 +1,5 @@
+import { watchPushOpen } from './src/data/push';
+import type { ComponentRef } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -19,7 +21,7 @@ import { Icon } from './src/components/Icon';
 import type { IconName } from './src/components/Icon';
 import { Logo, colors, s } from './src/components/ui';
 import { fetchAlerts } from './src/data/api';
-import { createMobileDemo, exampleAlerts, visibleAlerts } from './src/data/model';
+import { createMobileDemo, visibleAlerts } from './src/data/model';
 import type { MobileAlert, MobileData } from './src/data/model';
 
 import { authScreens, screenTab, tabLabels } from './src/navigation';
@@ -44,7 +46,15 @@ const tabs: { key: Tab; icon: IconName }[] = [
 ];
 function freshData(): MobileData {
   const data = createMobileDemo();
-  return { ...data, profile: { name: '', email: '', city: 'Ourinhos, SP', bloodType: 'Não sei' } };
+  return {
+    ...data,
+    profile: {
+      name: '',
+      email: '',
+      city: 'Ourinhos, SP',
+      bloodType: 'Não sei',
+    },
+  };
 }
 function MobileApp() {
   const shared = useSharedAgenda();
@@ -60,6 +70,15 @@ function MobileApp() {
       email: shared.session?.user.email ?? '',
     },
   };
+  const pendingPush = useRef(false);
+  useEffect(
+    () =>
+      watchPushOpen(() => {
+        pendingPush.current = !shared.session;
+        if (shared.session) setHistory(['alerts']);
+      }),
+    [shared.session?.token],
+  );
   const [history, setHistory] = useState<Screen[]>(['login']);
   const requestedScreen = history[history.length - 1]!;
   const screen =
@@ -75,13 +94,17 @@ function MobileApp() {
   const [connectionMessage, setConnectionMessage] = useState('');
   const requestActive = useRef(false);
   const connectionGeneration = useRef(0);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const resetScroll = useCallback(() => scroll.current?.scrollTo({ y: 0, animated: false }), []);
   const root = (tab: Tab) => setHistory([tab]);
   const go = (next: Screen) => setHistory((h) => [...h, next]);
   useEffect(() => {
-    setData((d) => ({ ...freshData(), apiUrl: shared.session?.url || d.apiUrl }));
-    setHistory([shared.session ? 'home' : 'login']);
+    setData((d) => ({
+      ...freshData(),
+      apiUrl: shared.session?.url || d.apiUrl,
+    }));
+    setHistory([shared.session ? (pendingPush.current ? 'alerts' : 'home') : 'login']);
+    if (shared.session) pendingPush.current = false;
     setSelectedAlert(undefined);
   }, [shared.session?.user.id]);
   const refresh = useCallback(
@@ -153,11 +176,9 @@ function MobileApp() {
     });
     return () => subscription.remove();
   }, [history.length, isAuth, screen]);
-  const unread = visibleAlerts(
-    [...data.remoteAlerts, ...exampleAlerts],
-    data.profile,
-    data.preferences,
-  ).filter((a) => !data.readAlertIds.includes(a.id)).length;
+  const unread = visibleAlerts(data.remoteAlerts, data.profile, data.preferences).filter(
+    (a) => !data.readAlertIds.includes(a.id),
+  ).length;
   function openAlert(alert: MobileAlert) {
     setSelectedAlert(alert);
     setData((d) => ({
@@ -207,12 +228,23 @@ function MobileApp() {
                 borderBottomColor: colors.border,
               }}
             >
-              <View style={{ flex: compactHeader ? undefined : 1, flexBasis: compactHeader ? '100%' : undefined, gap: 3 }}>
+              <View
+                style={{
+                  flex: compactHeader ? undefined : 1,
+                  flexBasis: compactHeader ? '100%' : undefined,
+                  gap: 3,
+                }}
+              >
                 <Logo />
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                   <Icon name="pin" size={18} />
                   <Text
-                    style={{ color: colors.muted, fontSize: 14, lineHeight: 22, flexShrink: 1 }}
+                    style={{
+                      color: colors.muted,
+                      fontSize: 14,
+                      lineHeight: 22,
+                      flexShrink: 1,
+                    }}
                   >
                     {data.profile.city}
                   </Text>
@@ -243,7 +275,12 @@ function MobileApp() {
                     }}
                   >
                     <Text
-                      style={{ color: '#fff', fontSize: 12, lineHeight: 20, textAlign: 'center' }}
+                      style={{
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: 20,
+                        textAlign: 'center',
+                      }}
                     >
                       {unread}
                     </Text>

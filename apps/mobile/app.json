@@ -9,6 +9,9 @@
       "lang": "pt-BR",
       "themeColor": "#bb2043",
       "description": "Protótipo do aplicativo do doador Vitalis"
-    }
+    },
+    "plugins": [
+      "expo-notifications"
+    ]
   }
 }

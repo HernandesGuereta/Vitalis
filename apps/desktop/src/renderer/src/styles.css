@@ -1202,3 +1202,7 @@ input:not([type='checkbox']):not([type='radio']), select, textarea { border-colo
 .appointment-summary { display: grid; gap: 16px; margin-bottom: 24px; }
 .appointment-summary .panel-heading { margin-bottom: 0; }
 .appointment-summary > .button { justify-self: start; }
+
+.stock-sync { margin-bottom: 24px; }
+.automatic-alerts { display: grid; gap: 16px; }
+.automatic-alerts article { border: 1px solid var(--border); display: grid; gap: 12px; }

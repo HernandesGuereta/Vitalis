@@ -4,19 +4,19 @@ Monorepositório TypeScript da plataforma de doação de sangue, com aplicativo 
 
 A etapa atual tem **cadastro de doador, login por e-mail/senha e agendamentos ligados ao PostgreSQL**. Na página inicial do mobile, o usuário faz uma pré-triagem digital curta para obter uma orientação inicial antes de sair de casa. O agendamento de doação é uma ação separada, e a reserva aparece automaticamente no desktop da unidade. Ambos usam uma única autenticação em cada aplicativo. O estoque, os cadastros administrativos e os demais fluxos anteriores continuam como demonstrações locais, identificadas separadamente.
 
-Não há integração com hemocentros reais, decisão de aptidão clínica, push, envio de e-mail ou WhatsApp. Use somente dados fictícios. Consulte [a agenda compartilhada](docs/agendamentos-compartilhados.md), [as decisões de privacidade](docs/privacidade.md) e [o contexto do produto](docs/contexto.md).
+Não há integração com hemocentros reais, decisão de aptidão clínica nem envio de e-mail ou WhatsApp. Avisos de escassez são automáticos; push nativo está preparado, com configuração e teste físico pendentes. Use somente dados fictícios. Consulte [a agenda compartilhada](docs/agendamentos-compartilhados.md), [as decisões de privacidade](docs/privacidade.md) e [o contexto do produto](docs/contexto.md).
 
 ## Stack
 
 | Parte | Tecnologia |
 | --- | --- |
-| Mobile | React Native + Expo SDK 57 + TypeScript; prévia React Native Web |
+| Mobile | React Native + Expo SDK 58 + TypeScript; prévia React Native Web |
 | Desktop | React + Electron + electron-vite |
 | API | Node.js 24 + Express 5 + driver `pg` |
 | Banco | PostgreSQL 18, migrações SQL e volume Docker |
 | Organização | npm workspaces e um `package-lock.json` |
 
-As versões de React/React Native acompanham a base do Expo SDK 57. Não há ORM, orquestrador de monorepositório ou biblioteca adicional de estado/navegação.
+As versões de React/React Native acompanham a base do Expo SDK 58. Não há ORM, orquestrador de monorepositório ou biblioteca adicional de estado/navegação.
 
 ## Preparar o ambiente
 
@@ -79,7 +79,7 @@ Também existem `npm run android --workspace @vitalis/mobile` e `npm run ios --w
 
 Em **Conta → Meus dados** é possível corrigir o nome. Em **Conta → Privacidade**, consultar/copiar os próprios dados e excluir a conta. Sessões duram até 30 minutos e ficam apenas em memória; reabrir/recarregar exige novo login. A recuperação de senha por e-mail ainda não está implementada.
 
-Para publicar um aviso no aplicativo, entre no desktop, crie/revise um alerta e clique em **Publicar no aplicativo**. A unidade é determinada pela sessão; o aviso fica no PostgreSQL. E-mail e WhatsApp continuam simulados.
+Registre entradas e saídas no desktop: a API gera mensagens prontas de escassez automaticamente, sem criação/publicação manual pelo hemocentro. Os avisos ficam no PostgreSQL e são encerrados após reposição. Consulte [avisos automáticos e push](docs/avisos-automaticos.md) para os limites, a migração e a configuração necessária para receber com o app fechado.
 
 As reservas anteriores salvas localmente não são importadas. O mobile usa a conta autenticada e as reservas do servidor. O desktop preserva sua agenda local anterior em uma seção recolhida. Não há cadastro público de hemocentros: as contas administrativas são preparadas no banco.
 
@@ -93,7 +93,7 @@ npm run db:cleanup
 npm run db:down
 ```
 
-`db:down` preserva o volume. `db:cleanup` remove reservas cuja data passou há mais de 30 dias, eventos/avisos com mais de 30 dias e sessões expiradas. A limpeza é manual nesta versão. Esse prazo é uma convenção para dados fictícios, não uma regra clínica ou prazo imposto pela LGPD.
+`db:down` preserva o volume. `db:cleanup` remove reservas cuja data passou há mais de 30 dias, eventos/avisos encerrados com mais de 30 dias e sessões expiradas. A limpeza é manual nesta versão. Esse prazo é uma convenção para dados fictícios, não uma regra clínica ou prazo imposto pela LGPD.
 
 A API recusa iniciar com usuário de banco superusuário ou capaz de criar bancos/papéis. Mobile e desktop nunca recebem as credenciais do PostgreSQL.
 
@@ -137,7 +137,7 @@ O export mobile gera JavaScript/assets, não APK/IPA. O build desktop gera arqui
 | `apps/desktop/src/renderer/src/` | Interface React, navegação e estilos administrativos |
 | `apps/desktop/src/renderer/src/views/` | Telas do administrador, incluindo `SharedAgendaView.tsx` |
 | `apps/desktop/src/renderer/src/prototype/` | Modelos da demonstração local e cliente da API compartilhada |
-| `apps/desktop/src/renderer/src/components/` | Elementos visuais e publicação autenticada de avisos |
+| `apps/desktop/src/renderer/src/components/` | Elementos visuais compartilhados |
 | `apps/desktop/tests/` | Regras locais e teste gráfico com perfil isolado |
 | `apps/mobile/App.tsx` | Cabeçalho, abas, áreas seguras e navegação protegida pela sessão |
 | `apps/mobile/src/screens/ScreeningScreen.tsx` | Questionário e orientação inicial, com respostas apenas na memória da tela |
